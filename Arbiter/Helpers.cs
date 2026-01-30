@@ -292,6 +292,8 @@ static class Helpers
             {
                 string response = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
+                Thread.Sleep(2000); // delay because roblox rccservice is a fucking chud
+
                 render = ExtractXML(response);
 
                 if (render == null)
