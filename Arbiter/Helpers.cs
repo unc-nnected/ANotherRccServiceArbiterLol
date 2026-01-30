@@ -42,7 +42,7 @@ static class Helpers
 
         var doc = XDocument.Parse(soapResponse);
 
-        XNamespace ns1 = "http://{Config.BaseURL}/";
+        XNamespace ns1 = $"http://{Config.BaseURL}/";
 
         var valueElement = doc.Descendants(ns1 + "value").FirstOrDefault();
 
