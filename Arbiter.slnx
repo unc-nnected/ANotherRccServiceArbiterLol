@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Arbiter/Arbiter.csproj">
+    <Platform Solution="*|x86" Project="x86" />
+    <Platform Solution="Debug|x64" Project="x64" />
+  </Project>
+</Solution>
