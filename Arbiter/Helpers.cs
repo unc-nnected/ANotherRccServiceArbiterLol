@@ -9,10 +9,6 @@ using System.Text;
 static class Helpers
 {
     private const string SECRET = "my-mother-ate-fries-lol";
-    private static readonly HttpClient http = new()
-    {
-        Timeout = TimeSpan.FromSeconds(2)
-    };
 
     public static bool SysStats()
     {
