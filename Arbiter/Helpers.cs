@@ -76,6 +76,57 @@ static class Helpers
         return port;
     }
 
+    public static bool Render(string jobId, int port, int placeId, out int pid)
+    {
+        pid = -1;
+
+        var proc = RCCService(port);
+        if (proc == null)
+            return false;
+
+        pid = proc.Id;
+
+        if (!AwaitRCCService(port, timeoutMs: 8000))
+        {
+            Kill(proc);
+            return false;
+        }
+
+        if (!SOAP(jobId, port, placeId, Config.RScript, 1, 2))
+        {
+            Kill(proc);
+            return false;
+        }
+
+        Logger.Info($"{jobId} started (pid={pid})");
+        return true;
+    }
+
+    public static bool ARender(string jobId, int port, int placeId, out int pid)
+    {
+        pid = -1;
+
+        var proc = RCCService(port);
+        if (proc == null)
+            return false;
+
+        pid = proc.Id;
+
+        if (!AwaitRCCService(port, timeoutMs: 8000))
+        {
+            Kill(proc);
+            return false;
+        }
+
+        if (!SOAP(jobId, port, placeId, Config.RAScript, 1, 2))
+        {
+            Kill(proc);
+            return false;
+        }
+
+        Logger.Info($"{jobId} started (pid={pid})");
+        return true;
+    }
 
     public static bool StartGameserver(string jobId, int port, int placeId, out int pid)
     {
@@ -93,7 +144,7 @@ static class Helpers
             return false;
         }
 
-        if (!SOAP(jobId, port, placeId))
+        if (!SOAP(jobId, port, placeId, Config.GSScript, 604800, 1))
         {
             Kill(proc);
             return false;
@@ -156,7 +207,7 @@ static class Helpers
         return true;
     }
 
-    private static bool SOAP(string jobId, int port, int placeId)
+    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category)
     {
         try
         {
@@ -171,14 +222,14 @@ static class Helpers
         <ns1:OpenJob>
             <ns1:job>
                 <ns1:id>{jobId}</ns1:id>
-                <ns1:expirationInSeconds>604800</ns1:expirationInSeconds>
-                <ns1:category>1</ns1:category>
-                <ns1:cores>1</ns1:cores>
+                <ns1:expirationInSeconds>{howlonguntilwedie}</ns1:expirationInSeconds>
+                <ns1:category>{category}</ns1:category>
+                <ns1:cores>{Config.cores}</ns1:cores>
             </ns1:job>
             <ns1:script>
                 <ns1:name>GameScript</ns1:name>
                 <ns1:script><![CDATA[
-                    {Config.GSScript}
+                    {type}
                 ]]></ns1:script>
             </ns1:script>
         </ns1:OpenJob>

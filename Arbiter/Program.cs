@@ -85,9 +85,67 @@ public class Program
                 ram = MathF.Round(ram, 1)
             });
         });
+
+        app.MapPost("/api/v1/avatar-render", async (HttpRequest req) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) ||
+                !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var body = await JsonSerializer.DeserializeAsync<ARenderRequest>(
+                req.Body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+
+            if (body == null || body.UserId <= 0)
+                return Results.BadRequest(new { error = "invalid_request" });
+
+            string jobId = Guid.NewGuid().ToString();
+            int port = Helpers.GetPort();
+            var clientIp = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            Logger.Warn($"Received an avatar render request from {clientIp}, drawing render job={jobId} port={port}");
+
+            if (!Helpers.ARender(jobId, port, body.UserId, out int pid))
+                return Results.Problem("RCCService OpenJob failed");
+
+            return Results.Json(new { status = "ready", jobId, port, pid });
+        });
+
+        app.MapPost("/api/v1/place-render", async (HttpRequest req) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) ||
+                !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var body = await JsonSerializer.DeserializeAsync<RenderRequest>(
+                req.Body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+
+            if (body == null || body.PlaceId <= 0)
+                return Results.BadRequest(new { error = "invalid_request" });
+
+            string jobId = Guid.NewGuid().ToString();
+            int port = Helpers.GetPort();
+            var clientIp = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            Logger.Warn($"Received an avatar render request from {clientIp}, drawing render job={jobId} port={port}");
+
+            if (!Helpers.Render(jobId, port, body.PlaceId, out int pid))
+                return Results.Problem("RCCService OpenJob failed");
+
+            return Results.Json(new { status = "ready", jobId, port, pid });
+        });
         app.Run("http://0.0.0.0:7000");
     }
 }
 
+public record RenderRequest(int PlaceId);
+public record ARenderRequest(int UserId);
 public record GameserverRequest(int PlaceId);
 public record KillRequest(int pid);
