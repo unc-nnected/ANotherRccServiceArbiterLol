@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <Content Include="favicon.ico" />
+	<EmbeddedResource Include="videos\**\*.mp4" />
+	<EmbeddedResource Include="videos\**\*.mov" />
   </ItemGroup>
 
 </Project>

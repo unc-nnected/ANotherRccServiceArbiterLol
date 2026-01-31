@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Reflection;
 
 public class Program
 {
@@ -189,6 +190,32 @@ public class Program
                 pid,
                 base64 = render
             });
+        });
+
+        app.MapGet("/", () =>
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+
+            var videos = assembly.GetManifestResourceNames().Where(n => n.StartsWith("Arbiter.videos.", StringComparison.OrdinalIgnoreCase) && (n.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || n.EndsWith(".mov", StringComparison.OrdinalIgnoreCase))).ToArray();
+            // WTF IS THIS CODE
+            if (videos.Length == 0)
+                return Results.NotFound("No embedded videos found :(");
+
+            var chosen = videos[Random.Shared.Next(videos.Length)];
+
+            using var resourceStream = assembly.GetManifestResourceStream(chosen);
+            if (resourceStream == null)
+                return Results.NotFound("Couldn't load video");
+
+            var ms = new MemoryStream();
+            resourceStream.CopyTo(ms);
+            ms.Position = 0;
+
+            return Results.File(
+                ms,
+                contentType: chosen.EndsWith(".mov", StringComparison.OrdinalIgnoreCase) ? "video/quicktime" : "video/mp4",
+                enableRangeProcessing: true
+            );
         });
         app.Run("http://0.0.0.0:7000");
     }
