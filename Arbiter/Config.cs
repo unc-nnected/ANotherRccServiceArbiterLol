@@ -6,6 +6,7 @@ static class Config
     public static string GSScript = "print('get a gameserver script nerd')";
     public static string RScript = "print('get a place render script nerd')";
     public static string RAScript = "print('get a avatar render script nerd')";
+    public static string RMScript = "print('get a model render script nerd')";
     public static int port { get; private set; } = 7000;
     public static int cores { get; private set; } = 1;
     public static void Parse(string[] args)
@@ -59,6 +60,18 @@ static class Config
                         throw new FileNotFoundException("avatar render script not found", pathnumberthree);
 
                     RAScript = File.ReadAllText(pathnumberthree);
+                    break;
+
+                case "--rmscript":
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException("--rmscript requires a value");
+
+                    var pathnumberfour = args[++i];
+
+                    if (!File.Exists(pathnumberfour))
+                        throw new FileNotFoundException("model render script not found", pathnumberfour);
+
+                    RMScript = File.ReadAllText(pathnumberfour);
                     break;
 
                 case "--baseurl":

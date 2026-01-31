@@ -132,6 +132,33 @@ static class Helpers
         return true;
     }
 
+    public static bool MRender(string jobId, int port, int placeId, out int pid, out string? render)
+    {
+        pid = -1;
+        render = null;
+
+        var proc = RCCService(port);
+        if (proc == null)
+            return false;
+
+        pid = proc.Id;
+
+        if (!AwaitRCCService(port, timeoutMs: 8000))
+        {
+            Kill(proc);
+            return false;
+        }
+
+        Logger.Info($"{jobId} started (pid={pid})");
+
+        if (!SOAP(jobId, port, placeId, Config.RMScript, 60, 2, out render))
+        {
+            Kill(proc);
+            return false;
+        }
+        return true;
+    }
+
     public static bool StartGameserver(string jobId, int port, int placeId, out int pid, out string? render)
     {
         pid = -1;
