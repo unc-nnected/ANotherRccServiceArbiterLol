@@ -264,7 +264,7 @@ static class Helpers
         <rob:OpenJob>
             <rob:job>
                 <rob:id>{jobId}</rob:id>
-                <rob:expirationInSeconds>999999999</rob:expirationInSeconds>
+                <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
                 <rob:cores>{Config.cores}</rob:cores>
             </rob:job>
             <rob:script>
