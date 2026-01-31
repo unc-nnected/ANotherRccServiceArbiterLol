@@ -7,6 +7,7 @@ public class Program
     {
         try
         {
+            // parse config
             Config.Parse(args);
             Logger.Info($"loaded {Config.GSScript.Length} bytes from gameserver script");
             Logger.Info($"loaded {Config.RScript.Length} bytes from place/model render script");
@@ -15,12 +16,14 @@ public class Program
         }
         catch (Exception ex)
         {
+            // what the fuck happend
             Logger.Error(ex.Message);
             Environment.Exit(1);
         }
 
         if (!Config.SkipSysStats)
         {
+            // does sysstats trust this system?
             if (!Helpers.SysStats())
             {
                 Logger.Error("Start is not a valid member of NetworkServer");
@@ -29,6 +32,7 @@ public class Program
         }
         else
         {
+            // nevermin
             Logger.Warn("SysStats skipped");
         }
 
@@ -37,21 +41,27 @@ public class Program
 
         app.MapPost("/api/v1/gameserver", async (HttpRequest req) =>
         {
+            // check authorization so we wont get random ass gameservers
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!)) {
                 return Results.Json(new { error = "unauthorized" }, statusCode: 401);
             }
 
+            // get post data
             var body = await JsonSerializer.DeserializeAsync<GameserverRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
+            // validate
             if (body == null || body.PlaceId <= 0)
-                return Results.BadRequest(new { error = "invalid_request" });
+                return Results.BadRequest(new { error = "badrequest" });
 
+            // do a bunch of variations..
             string jobId = Guid.NewGuid().ToString();
             int port = Helpers.GetGameServerPort();
+            // get client's ip for logging
             var clientIp = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
             Logger.Warn($"Received a gameserver request from {clientIp}, creating gameserver job={jobId} place={body.PlaceId} port={port}");
 
+            // start the gameserver!
             if (!Helpers.StartGameserver(jobId, port, body.PlaceId, out int pid, out string? render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
 
@@ -60,7 +70,9 @@ public class Program
 
         app.MapPost("/api/v1/gameserver/kill", (KillRequest req) =>
         {
+            // KillbyID checks if pid exists and related to RCCService
             if (!Helpers.KillbyID(req.pid))
+                // ???
                 return Results.NotFound(new { error = "notfound" });
 
             return Results.Ok(new { status = "killed", pid = req.pid });
@@ -68,8 +80,10 @@ public class Program
 
         app.MapGet("/api/v1/health", () =>
         {
+            // we get ram
             if (!Health.IsHealthy(out var ram))
             {
+                // uh oh, ram is overloaded
                 Logger.Warn($"Health is degrading, ram={ram:F1}%");
 
                 return Results.Json(new
@@ -145,6 +159,7 @@ public class Program
             if (render == null)
                 return Results.Problem("RCCService failed to render");
 
+            // we kill the rccservice instantly because that makes our life easier
             if (!Helpers.KillbyID(pid))
                 return Results.NotFound(new { error = "notfound" });
 
@@ -181,6 +196,7 @@ public class Program
             if (render == null)
                 return Results.Problem("RCCService failed to render");
 
+            // we kill the rccservice instantly because that makes our life easier
             if (!Helpers.KillbyID(pid))
                 return Results.NotFound(new { error = "notfound" });
 
@@ -205,6 +221,8 @@ public class Program
 
             using var resourceStream = assembly.GetManifestResourceStream(chosen);
             if (resourceStream == null)
+                // fuck you idiot
+                // use Problem, not NotFound
                 return Results.Problem("Couldn't load video");
 
             var ms = new MemoryStream();
@@ -221,6 +239,7 @@ public class Program
     }
 }
 
+// bunch of post data shit!
 public record RenderRequest(int PlaceId);
 public record ARenderRequest(int UserId);
 public record MRenderRequest(int AssetID);

@@ -16,13 +16,16 @@ static class Helpers
     {
         try
         {
+            // check if the file path contains Arbiter, else return false
             string exe = Environment.ProcessPath ?? "";
             if (!exe.Contains("Arbiter", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            if (!IsPortBindable(7000))
+            // check if port is in use
+            if (!IsPortBindable(Config.port))
                 return false;
 
+            // check if there's already an arbiter running
             var current = Process.GetCurrentProcess();
             var same = Process.GetProcessesByName(current.ProcessName);
             if (same.Length > 1)
@@ -32,6 +35,7 @@ static class Helpers
         }
         catch
         {
+            // idfk what happend but return false just in case
             return false;
         }
     }
@@ -41,6 +45,7 @@ static class Helpers
     {
         try
         {
+            // create a listener instantly and then stop
             var listener = new TcpListener(IPAddress.Loopback, port);
             listener.Start();
             listener.Stop();
@@ -54,6 +59,7 @@ static class Helpers
 
     public static bool IsAuthorized(string header)
     {
+        // check if Authorization: header has Bearer and the SECRET that we have but encoded to SHA256
         if (!header.StartsWith("Bearer ")) return false;
 
         string token = header["Bearer ".Length..];
@@ -87,15 +93,16 @@ static class Helpers
     {
         pid = -1;
         render = null;
-
+        // start rccservice
         var proc = RCCService(port);
         if (proc == null)
             return false;
 
         pid = proc.Id;
-
+        //check if rccservice is online
         if (!AwaitRCCService(port, timeoutMs: 8000))
         {
+            // lmfao
             Kill(proc);
             return false;
         }
@@ -196,6 +203,7 @@ static class Helpers
     {
         try
         {
+            // we get RCCService.exe from the custom path
             string RCCService = Path.Combine(Config.RCCDirectory, "RCCService.exe");
 
             bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -206,6 +214,7 @@ static class Helpers
 
             if (isWindows)
             {
+                // windows (:
                 psi = new ProcessStartInfo
                 {
                     FileName = RCCService,
@@ -219,6 +228,7 @@ static class Helpers
             }
             else
             {
+                // linux ):
                 psi = new ProcessStartInfo
                 {
                     FileName = "wine",
@@ -235,6 +245,7 @@ static class Helpers
         }
         catch (Exception ex)
         {
+            // What
             Logger.Error("RCCService couldn't start: " + ex.Message);
             return null;
         }
@@ -253,10 +264,12 @@ static class Helpers
         {
             try
             {
+                // GET rccservice because it behaves like a webserver anyways, it errors on GET safely so RCCService can tell us it's alive
                 var resp = client.GetAsync($"http://127.0.0.1:{port}").Result;
 
                 if (resp.Content.Headers.ContentType?.MediaType == "text/xml")
                 {
+                    // yup alive
                     Logger.Info("RCCService alive, continuing");
                     return true;
                 }
@@ -265,7 +278,7 @@ static class Helpers
 
             Thread.Sleep(250);
         }
-
+        // RCCService fucking DEAD
         Logger.Error("Timed out waiting for RCCService");
         return false;
     }
@@ -301,32 +314,32 @@ static class Helpers
   </rob:OpenJob>
 </soapenv:Body>
 </soapenv:Envelope>";
-
             using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}");
-            req.Content = new StringContent(soap, Encoding.UTF8, "text/xml");
-            req.Headers.Add("SOAPAction", "OpenJob");
+            req.Content = new StringContent(soap, Encoding.UTF8, "text/xml"); // this as well
+            req.Headers.Add("SOAPAction", "OpenJob"); // important because rccservice wouldnt recongize this
 
-            using var resp = client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+            using var resp = client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult(); // POST! and then wait for result
 
-            using var stream = resp.Content.ReadAsStream();
+            using var stream = resp.Content.ReadAsStream(); // start reading
             using var reader = new StreamReader(stream, Encoding.UTF8);
 
-            var responseText = reader.ReadToEnd();
+            var responseText = reader.ReadToEnd(); // done (:
 
             if (string.IsNullOrWhiteSpace(responseText))
                 return resp.IsSuccessStatusCode;
 
-            if (category == 2)
+            if (category == 2) // category 2 is for renders so we can get the render file safely
             {
                 try
                 {
                     var doc = XDocument.Parse(responseText);
                     var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-
+                    // yeah RCCService didn't error
                     render = value?.Value;
                 }
                 catch (Exception ex)
                 {
+                    // C# ohio
                     Logger.Error("Couldn't parse XML: " + ex.Message);
                 }
             }
@@ -335,6 +348,7 @@ static class Helpers
         }
         catch (Exception ex)
         {
+            // WHAT JUST HAPPEND BRO
             Logger.Error("SOAP error: " + ex);
             return false;
         }
@@ -359,6 +373,7 @@ static class Helpers
 
             if (!proc.ProcessName.Contains("RCCService", StringComparison.OrdinalIgnoreCase))
             {
+                // lmfaoooooooo dumbass tried to kill non rccservice
                 Logger.Warn($"Refusing to kill unrelated process pid={pid}");
                 return false;
             }
