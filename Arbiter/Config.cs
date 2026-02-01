@@ -106,8 +106,8 @@ static class Config
                     if (i + 1 >= args.Length)
                         throw new ArgumentException("--secret requires a value");
 
-                    FakeSECRET = args[++i];
                     SECRET = args[++i];
+                    FakeSECRET = SECRET;
                     break;
             }
         }
