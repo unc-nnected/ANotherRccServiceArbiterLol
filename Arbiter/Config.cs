@@ -9,6 +9,7 @@ static class Config
     public static string RMScript = "print('get a model render script nerd')";
     public static int port { get; private set; } = 7000;
     public static int cores { get; private set; } = 1;
+    public static bool debug { get; private set; } = false;
     public static void Parse(string[] args)
     {
         for (int i = 0; i < args.Length; i++)
@@ -93,6 +94,10 @@ static class Config
                         throw new ArgumentException("--cores requires a value");
 
                     cores = int.Parse(args[++i]); // why are we parsing for this
+                    break;
+
+                case "--debug": // debug mode (more information)
+                    debug = true;
                     break;
             }
         }

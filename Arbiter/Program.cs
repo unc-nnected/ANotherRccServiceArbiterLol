@@ -24,12 +24,14 @@ public class Program
         {
             // parse config
             Config.Parse(args);
-            Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
-            Logger.Info($"Loaded {Config.RScript.Length} bytes from place/model render script");
-            Logger.Info($"Loaded {Config.RAScript.Length} bytes from avatar render script");
-            Logger.Info($"Loaded {Config.BaseURL.Length} bytes from BaseURL");
+            if (Config.debug)
+            {
+                Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
+                Logger.Info($"Loaded {Config.RScript.Length} bytes from place/model render script");
+                Logger.Info($"Loaded {Config.RAScript.Length} bytes from avatar render script");
+                Logger.Info($"Loaded {Config.BaseURL.Length} bytes from BaseURL");
+            }
             Logger.Info("Config read");
-            Logger.Info("Service starting...");
         }
         catch (Exception ex)
         {
@@ -38,8 +40,6 @@ public class Program
             Environment.Exit(1);
         }
 
-        Logger.Info("Intializing ASP.NET Web Service");
-
         if (!Config.SkipSysStats)
         {
             // does sysstats trust this system?
@@ -47,9 +47,6 @@ public class Program
             {
                 Logger.Error("Start is not a valid member of NetworkServer");
                 return;
-            } else
-            {
-                Logger.Info($"Service Started on port {Config.port}");
             }
         }
         else
@@ -57,6 +54,8 @@ public class Program
             // nevermind
             Logger.Warn("SysStats skipped");
         }
+
+        Logger.Print("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
         var app = builder.Build();
@@ -257,7 +256,17 @@ public class Program
                 enableRangeProcessing: true
             );
         });
-        app.Run("http://0.0.0.0:7000");
+        Logger.Print("Intializing ASP.NET Web Service");
+        var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+        lifetime.ApplicationStarted.Register(() =>
+        {
+            Logger.Print($"Service Started on port {Config.port}");
+        });
+        lifetime.ApplicationStopping.Register(() =>
+        {
+            Logger.Print("Stopping ASP.NET service");
+        });
+        app.Run($"http://0.0.0.0:{Config.port}");
     }
 }
 

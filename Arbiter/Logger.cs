@@ -17,6 +17,11 @@ static class Logger
         Write(ConsoleColor.Red, msg);
     }
 
+    public static void Print(string msg)
+    {
+        Write(ConsoleColor.White, msg); 
+    }
+
 	private static void Write(ConsoleColor color, string msg)
 	{
 		lock (_lock)

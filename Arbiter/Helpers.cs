@@ -107,7 +107,10 @@ static class Helpers
             return false;
         }
 
-        Logger.Info($"{jobId} started (pid={pid})");
+        if (Config.debug)
+        {
+            Logger.Info($"{jobId} started (pid={pid})");
+        }
 
         if (!SOAP(jobId, port, placeId, Config.RScript, 60, 2, out render))
         {
@@ -134,7 +137,10 @@ static class Helpers
             return false;
         }
 
-        Logger.Info($"{jobId} started (pid={pid})");
+        if (Config.debug)
+        {
+            Logger.Info($"{jobId} started (pid={pid})");
+        }
 
         if (!SOAP(jobId, port, placeId, Config.RAScript, 60, 2, out render))
         {
@@ -161,7 +167,10 @@ static class Helpers
             return false;
         }
 
-        Logger.Info($"{jobId} started (pid={pid})");
+        if (Config.debug)
+        {
+            Logger.Info($"{jobId} started (pid={pid})");
+        }
 
         if (!SOAP(jobId, port, placeId, Config.RMScript, 60, 2, out render))
         {
@@ -195,7 +204,10 @@ static class Helpers
             return false;
         }
 
-        Logger.Info($"{jobId} started (pid={pid})");
+        if (Config.debug)
+        {
+            Logger.Info($"{jobId} started (pid={pid})");
+        }
         return true;
     }
 
@@ -210,7 +222,10 @@ static class Helpers
 
             ProcessStartInfo psi;
 
-            Logger.Info($"Using {Config.RCCDirectory} for RCCService with port {port}");
+            if (Config.debug)
+            {
+                Logger.Info($"Using {Config.RCCDirectory} for RCCService with port {port}");
+            }
 
             if (isWindows)
             {
@@ -223,8 +238,10 @@ static class Helpers
                     CreateNoWindow = false,
                     WorkingDirectory = Config.RCCDirectory
                 };
-
-                Logger.Info($"RCCServuce starting");
+                if (Config.debug)
+                {
+                    Logger.Info($"RCCServuce starting");
+                }
             }
             else
             {
@@ -238,7 +255,10 @@ static class Helpers
                     WorkingDirectory = Config.RCCDirectory
                 };
 
-                Logger.Info($"RCCServuce starting via wine");
+                if (Config.debug)
+                {
+                    Logger.Info($"RCCServuce starting via wine");
+                }
             }
 
             return Process.Start(psi);
@@ -270,7 +290,10 @@ static class Helpers
                 if (resp.Content.Headers.ContentType?.MediaType == "text/xml")
                 {
                     // yup alive
-                    Logger.Info("RCCService alive, continuing");
+                    if (Config.debug)
+                    {
+                        Logger.Info("RCCService alive, continuing");
+                    }
                     return true;
                 }
             }
@@ -374,11 +397,16 @@ static class Helpers
             if (!proc.ProcessName.Contains("RCCService", StringComparison.OrdinalIgnoreCase))
             {
                 // lmfaoooooooo dumbass tried to kill non rccservice
-                Logger.Warn($"Refusing to kill unrelated process pid={pid}");
+                if (Config.debug)
+                {
+                    Logger.Warn($"Refusing to kill unrelated process pid={pid}");
+                }
                 return false;
             }
-
-            Logger.Warn($"Stopping RCCService pid={pid}");
+            if (Config.debug)
+            {
+                Logger.Warn($"Stopping RCCService pid={pid}");
+            }
             proc.Kill(true);
             return true;
         }
