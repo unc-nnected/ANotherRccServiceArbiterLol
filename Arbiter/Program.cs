@@ -24,8 +24,8 @@ public class Program
         {
             // parse config
             Config.Parse(args);
-            Logger.Info($"Access key read: {Config.FakeSECRET}");
-            Logger.Info($"Current Access key: {Config.SECRET}");
+            Logger.Print($"Access key read: {Config.FakeSECRET}");
+            Logger.Print($"Current Access key: {Config.SECRET}");
             if (Config.debug)
             {
                 Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
