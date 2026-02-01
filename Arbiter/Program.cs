@@ -13,8 +13,6 @@ Now everybody, do the propaganda
 And sing along to the age of paranoia
 
 */
-
-
 using System.Text.Json;
 using System.Reflection;
 
