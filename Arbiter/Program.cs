@@ -133,7 +133,7 @@ public class Program
             var body = await JsonSerializer.DeserializeAsync<ARenderRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (body == null || body.UserId <= 0)
-                return Results.BadRequest(new { error = "bad_request" });
+                return Results.BadRequest(new { error = "badrequest" });
 
             string jobId = Guid.NewGuid().ToString();
             int port = Helpers.GetPort();
@@ -212,13 +212,19 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received an model render request from {clientIP}, job={jobId} port={port}");
+            Logger.Warn($"Received a model render request from {clientIP}, job={jobId} port={port}");
 
             if (!Helpers.MRender(jobId, port, body.AssetID, out int pid, out string? render))
+            {
+                Logger.Warn("OpenJob");
                 return Results.Problem("RCCService couldn't execute OpenJob");
+            }
 
             if (render == null)
+            {
+                Logger.Warn("Render null");
                 return Results.Problem("RCCService failed to render");
+            }
 
             // we kill the rccservice instantly because that makes our life easier
             if (!Helpers.KillbyID(pid))
