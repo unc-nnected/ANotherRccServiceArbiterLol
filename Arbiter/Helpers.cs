@@ -196,6 +196,11 @@ static class Helpers
             return false;
         }
 
+        if (Config.debug)
+        {
+            Logger.Info($"{jobId} started (pid={pid})");
+        }
+
         if (!SOAP(jobId, port, placeId, Config.GSScript, 604800, 1, out render))
         {
             Logger.Info($"{jobId} SOAP action failed");
@@ -203,10 +208,6 @@ static class Helpers
             return false;
         }
 
-        if (Config.debug)
-        {
-            Logger.Info($"{jobId} started (pid={pid})");
-        }
         return true;
     }
 
@@ -308,6 +309,7 @@ static class Helpers
 
     private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render) {
         render = null;
+        Thread.Sleep(250);
         try
         {
             using var client = new HttpClient
@@ -315,10 +317,9 @@ static class Helpers
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
-            if (type == Config.RAScript && placeId == 53)
+            if (Config.debug)
             {
-                Logger.Warn("Im not rendering this avatar bro"); // I HATE YOU!!!!! DIE!!!!!!
-                return false;
+                Logger.Warn($"Using {placeId} ID for SOAP");
             }
 
             client.DefaultRequestHeaders.Host = $"127.0.0.1:{port}";
@@ -346,6 +347,11 @@ static class Helpers
             req.Content = new StringContent(soap, Encoding.UTF8, "text/xml"); // this as well
             req.Headers.Add("SOAPAction", "OpenJob"); // important because rccservice wouldnt recongize this
 
+            if (Config.debug)
+            {
+                Logger.Warn(type);
+            }
+
             using var resp = client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult(); // POST! and then wait for result
 
             using var stream = resp.Content.ReadAsStream(); // start reading
@@ -356,19 +362,34 @@ static class Helpers
             if (string.IsNullOrWhiteSpace(responseText))
                 return resp.IsSuccessStatusCode;
 
-            if (category == 2) // category 2 is for renders so we can get the render file safely
+            if (category == 2)
             {
                 try
                 {
                     var doc = XDocument.Parse(responseText);
+
+                    // boo
+                    if (doc.Descendants().Any(e => e.Name.LocalName == "faultsring"))
+                    {
+                        Logger.Error("RCCService errored:\n" + responseText);
+                        return false;
+                    }
+
                     var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-                    // yeah RCCService didn't error
-                    render = value?.Value;
+
+                    if (value == null || string.IsNullOrWhiteSpace(value.Value))
+                    {
+                        Logger.Error(responseText);
+                        return false;
+                    }
+
+                    render = value.Value.Trim();
                 }
                 catch (Exception ex)
                 {
-                    // C# ohio
-                    Logger.Error("Couldn't parse XML: " + ex.Message);
+                    //C# ohio
+                    Logger.Error("Couldn't parse XML: " + ex);
+                    return false;
                 }
             }
 

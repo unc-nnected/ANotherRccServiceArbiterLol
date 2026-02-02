@@ -215,18 +215,11 @@ public class Program
             Logger.Warn($"Received a model render request from {clientIP}, job={jobId} port={port}");
 
             if (!Helpers.MRender(jobId, port, body.AssetID, out int pid, out string? render))
-            {
-                Logger.Warn("OpenJob");
                 return Results.Problem("RCCService couldn't execute OpenJob");
-            }
 
             if (render == null)
-            {
-                Logger.Warn("Render null");
                 return Results.Problem("RCCService failed to render");
-            }
 
-            // we kill the rccservice instantly because that makes our life easier
             if (!Helpers.KillbyID(pid))
                 return Results.NotFound(new { error = "notfound" });
 
