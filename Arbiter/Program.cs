@@ -29,8 +29,9 @@ public class Program
             if (Config.debug)
             {
                 Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
-                Logger.Info($"Loaded {Config.RScript.Length} bytes from place/model render script");
+                Logger.Info($"Loaded {Config.RScript.Length} bytes from place render script");
                 Logger.Info($"Loaded {Config.RAScript.Length} bytes from avatar render script");
+                Logger.Info($"Loaded {Config.RMScript.Length} bytes from model render script");
                 Logger.Info($"Loaded {Config.BaseURL.Length} bytes from BaseURL");
                 Logger.Info("Config read");
             }
