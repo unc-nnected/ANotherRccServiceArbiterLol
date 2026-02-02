@@ -315,6 +315,12 @@ static class Helpers
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
+            if (type == Config.RAScript && placeId == 53)
+            {
+                Logger.Warn("Im not rendering this avatar bro");
+                return false;
+            }
+
             client.DefaultRequestHeaders.Host = $"127.0.0.1:{port}";
             type = type.Replace("{placeId}", placeId.ToString());
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
