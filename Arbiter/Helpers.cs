@@ -1,7 +1,6 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -10,6 +9,8 @@ using System.Xml.Linq;
 
 static class Helpers
 {
+    private static readonly Dictionary<string, GSMJob> Jobs = new();
+    private static readonly object JobsLock = new();
 
     public static bool SysStats()
     {
@@ -39,6 +40,30 @@ static class Helpers
         }
     }
 
+    public static void StartGSM()
+    {
+        new Thread(() =>
+        {
+            while (true)
+            {
+                lock (JobsLock)
+                {
+                    foreach (var job in Jobs.Values.ToList())
+                    {
+                        if (DateTime.UtcNow > job.ExpiresAt)
+                        {
+                            Logger.Warn($"Job expired: {job.JobId}");
+                            KillbyID(job.Pid);
+                            job.Alive = false;
+                        }
+                    }
+                }
+
+                Thread.Sleep(5000);
+            }
+        })
+        { IsBackground = true }.Start();
+    }
 
     private static bool IsPortBindable(int port)
     {
@@ -207,6 +232,22 @@ static class Helpers
             Kill(proc);
             return false;
         }
+
+        lock (JobsLock)
+        {
+            Jobs[jobId] = new GSMJob
+            {
+                JobId = jobId,
+                Port = port,
+                PlaceId = placeId,
+                Pid = pid,
+                ExpiresAt = DateTime.UtcNow.AddSeconds(604800),
+                LastHeartbeat = DateTime.UtcNow,
+                Players = 0,
+                Alive = true
+            };
+        }
+
 
         return true;
     }
@@ -439,6 +480,159 @@ static class Helpers
         catch
         {
             return false;
+        }
+    }
+
+    private static bool SOAPRenewLease(int port, string jobId, int seconds)
+    {
+        try
+        {
+            using var client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+
+            var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/""
+                  xmlns:rob=""http://{Config.BaseURL}/"">
+  <soapenv:Body>
+    <rob:RenewLease>
+      <rob:jobID>{jobId}</rob:jobID>
+      <rob:expirationInSeconds>{seconds}</rob:expirationInSeconds>
+    </rob:RenewLease>
+  </soapenv:Body>
+</soapenv:Envelope>";
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}");
+            req.Content = new StringContent(soap, Encoding.UTF8, "text/xml");
+            req.Headers.Add("SOAPAction", "RenewLease");
+
+            using var resp = client.Send(req);
+
+            if (!resp.IsSuccessStatusCode)
+                return false;
+
+            var body = resp.Content.ReadAsStringAsync().Result;
+
+            if (string.IsNullOrWhiteSpace(body))
+                return true;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"SOAP RenewLease failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static bool RenewLease(string jobId, int seconds)
+    {
+        GSMJob job;
+
+        lock (JobsLock)
+        {
+            if (!Jobs.TryGetValue(jobId, out job))
+                return false;
+        }
+
+        if (!SOAPRenewLease(job.Port, job.JobId, seconds))
+            return false;
+
+        lock (JobsLock)
+        {
+            job.ExpiresAt = DateTime.UtcNow.AddSeconds(seconds);
+            job.LastHeartbeat = DateTime.UtcNow;
+            job.Alive = true;
+        }
+
+        return true;
+    }
+
+
+    public static bool UpdatePresence(string jobId, bool joining)
+    {
+        lock (JobsLock)
+        {
+            if (!Jobs.TryGetValue(jobId, out var job))
+                return false;
+
+            job.Players += joining ? 1 : -1;
+            if (job.Players < 0) job.Players = 0;
+
+            job.LastHeartbeat = DateTime.UtcNow;
+            return true;
+        }
+    }
+
+    public static List<object> GetAllJobs(int? Port = null)
+    {
+        lock (JobsLock)
+        {
+            return Jobs.Values  // this is better
+                .Where(j => j.Alive && (Port == null || j.Port == Port))
+                .Select(j => new
+                {
+                    j.JobId,
+                    j.PlaceId,
+                    j.Players,
+                    j.Port,
+                    expiresAt = j.ExpiresAt
+                })
+                .Cast<object>()
+                .ToList();
+        }
+    }
+
+    private static bool AwaitRCCServiceButUsePIDInsteadBecausePortFuckingSucksLmao(int pid)
+    {
+        try
+        {
+            var proc = Process.GetProcessById(pid);
+            return !proc.HasExited;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static GSMJob? GetJob(string jobId)
+    {
+        if (!Jobs.TryGetValue(jobId, out var job))
+            return null;
+
+        if (DateTime.UtcNow > job.ExpiresAt)
+        {
+            job.Alive = false;
+            Jobs.Remove(jobId, out _);
+            return null;
+        }
+
+        if (!AwaitRCCServiceButUsePIDInsteadBecausePortFuckingSucksLmao(job.Pid))
+        {
+            job.Alive = false;
+            Jobs.Remove(jobId, out _);
+            return null;
+        }
+
+        job.Alive = true;
+        return job;
+    }
+
+    public static GSMJob? GetJobByPID(int pid)
+    {
+        lock (JobsLock)
+        {
+            return Jobs.Values.FirstOrDefault(j => j.Pid == pid);
+        }
+    }
+
+    public static void RemoveJob(string jobId)
+    {
+        lock (JobsLock)
+        {
+            Jobs.Remove(jobId, out _);
         }
     }
 

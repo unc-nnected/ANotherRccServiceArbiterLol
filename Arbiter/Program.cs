@@ -92,15 +92,34 @@ public class Program
             return Results.Json(new { status = "ready", jobId, port, pid});
         });
 
-        app.MapPost("/api/v1/gameserver/kill", (KillRequest req) =>
+        app.MapPost("/api/v1/gameserver/kill", (HttpRequest http, KillRequest req) =>
         {
-            // KillbyID checks if pid exists and related to RCCService
+            if (!http.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+
+            var job = Helpers.GetJobByPID(req.pid);
+
             if (!Helpers.KillbyID(req.pid))
-                // ???
                 return Results.NotFound(new { error = "notfound" });
 
-            return Results.Ok(new { status = "killed", pid = req.pid });
+            if (job != null)
+            {
+                job.Alive = false;
+                Helpers.RemoveJob(job.JobId);
+
+                if (Config.debug)
+                    Logger.Warn($"Killed {job.JobId} (pid={req.pid}, port={job.Port})");
+            }
+
+            return Results.Ok(new
+            {
+                status = "killed",
+                pid = req.pid,
+                jobId = job?.JobId
+            });
         });
+
+
 
         app.MapGet("/api/v1/health", () =>
         {
@@ -258,6 +277,69 @@ public class Program
                 enableRangeProcessing: true
             );
         });
+
+        app.MapPost("/api/v1/renewlease", (HttpRequest req, RenewLeaseBody body) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            if (string.IsNullOrWhiteSpace(body.jobId) || body.seconds <= 0)
+                return Results.Json(new { error = "badrequest" }, statusCode: 400);
+
+            var ok = Helpers.RenewLease(body.jobId, body.seconds);
+            return ok ? Results.Ok() : Results.NotFound();
+        });
+
+        app.MapGet("/api/v1/getalljobs", (HttpRequest req, int? port) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var jobs = Helpers.GetAllJobs(port);
+            return Results.Json(jobs);
+        });
+
+        app.MapPost("/api/v1/presence/join", (HttpRequest req, PresenceBody body) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var ok = Helpers.UpdatePresence(body.jobId, joining: true);
+            return ok ? Results.Ok() : Results.NotFound();
+        });
+
+        app.MapPost("/api/v1/presence/leave", (HttpRequest req, PresenceBody body) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var ok = Helpers.UpdatePresence(body.jobId, joining: false);
+            return ok ? Results.Ok() : Results.NotFound();
+        });
+
+        app.MapGet("/api/v1/job/{jobId}", (HttpRequest req, string jobId) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var job = Helpers.GetJob(jobId);
+
+            if (job == null)
+                return Results.NotFound();
+
+            return Results.Json(job);
+        });
+
         Logger.Print("Intializing ASP.NET Web Service");
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStarted.Register(() =>
@@ -278,3 +360,18 @@ public record ARenderRequest(int UserId);
 public record MRenderRequest(int AssetID);
 public record GameserverRequest(int PlaceId);
 public record KillRequest(int pid);
+public record GSMJob
+{
+    public string JobId { get; init; } = "";
+    public int Port { get; init; }
+    public int PlaceId { get; init; }
+    public int Pid { get; set; }
+
+    public DateTime ExpiresAt { get; set; }
+    public DateTime LastHeartbeat { get; set; }
+
+    public int Players { get; set; }
+    public bool Alive { get; set; }
+}
+public record RenewLeaseBody(string jobId, int seconds);
+public record PresenceBody(string jobId);
