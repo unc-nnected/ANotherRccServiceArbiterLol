@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -11,6 +10,7 @@ static class Helpers
 {
     private static readonly Dictionary<string, GSMJob> Jobs = new();
     private static readonly object JobsLock = new();
+    private static bool _gsmStarted;
 
     public static bool SysStats()
     {
@@ -42,6 +42,14 @@ static class Helpers
 
     public static void StartGSM()
     {
+        lock (JobsLock)
+        {
+            if (_gsmStarted)
+                return;
+
+            _gsmStarted = true;
+        }
+
         new Thread(() =>
         {
             while (true)
@@ -52,9 +60,8 @@ static class Helpers
                     {
                         if (DateTime.UtcNow > job.ExpiresAt)
                         {
-                            Logger.Warn($"Job expired: {job.JobId}");
                             KillbyID(job.Pid);
-                            job.Alive = false;
+                            Jobs.Remove(job.JobId);
                         }
                     }
                 }
@@ -64,6 +71,7 @@ static class Helpers
         })
         { IsBackground = true }.Start();
     }
+
 
     private static bool IsPortBindable(int port)
     {
@@ -102,14 +110,14 @@ static class Helpers
     public static int GetPort()
     {
         var r = new Random();
-        int port = r.Next(64000, 64989);
+        int port = r.Next(63000, 64989);
         return port;
     }
 
     public static int GetGameServerPort()
     {
         var r = new Random();
-        int port = r.Next(60000, 64000);
+        int port = r.Next(59999, 63000);
         return port;
     }
 
@@ -599,25 +607,28 @@ static class Helpers
 
     public static GSMJob? GetJob(string jobId)
     {
-        if (!Jobs.TryGetValue(jobId, out var job))
-            return null;
-
-        if (DateTime.UtcNow > job.ExpiresAt)
+        lock (JobsLock)
         {
-            job.Alive = false;
-            Jobs.Remove(jobId, out _);
-            return null;
-        }
+            if (!Jobs.TryGetValue(jobId, out var job))
+                return null;
 
-        if (!AwaitRCCServiceButUsePIDInsteadBecausePortFuckingSucksLmao(job.Pid))
-        {
-            job.Alive = false;
-            Jobs.Remove(jobId, out _);
-            return null;
-        }
+            if (DateTime.UtcNow > job.ExpiresAt)
+            {
+                job.Alive = false;
+                Jobs.Remove(jobId);
+                return null;
+            }
 
-        job.Alive = true;
-        return job;
+            if (!AwaitRCCServiceButUsePIDInsteadBecausePortFuckingSucksLmao(job.Pid))
+            {
+                job.Alive = false;
+                Jobs.Remove(jobId);
+                return null;
+            }
+
+            job.Alive = true;
+            return job;
+        }
     }
 
     public static GSMJob? GetJobByPID(int pid)
@@ -632,7 +643,7 @@ static class Helpers
     {
         lock (JobsLock)
         {
-            Jobs.Remove(jobId, out _);
+            Jobs.Remove(jobId);
         }
     }
 

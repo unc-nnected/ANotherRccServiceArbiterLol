@@ -350,6 +350,8 @@ public class Program
         {
             Logger.Print("Stopping ASP.NET service");
         });
+        Logger.Print("Intializing Game Monitor Service");
+        Helpers.StartGSM();
         app.Run($"http://0.0.0.0:{Config.port}");
     }
 }
