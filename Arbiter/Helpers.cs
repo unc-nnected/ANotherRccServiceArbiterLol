@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -356,29 +357,33 @@ static class Helpers
         Logger.Error("Timed out waiting for RCCService");
         return false;
     }
-
-
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate, int fakeahport) {
+    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate, int fakeahport)
+    {
         render = null;
-        Thread.Sleep(250);
+
         try
         {
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.UseNagleAlgorithm = false;
+
+            using var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                UseProxy = false
+            };
+
             using var client = new HttpClient
             {
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
-            if (Config.debug)
-            {
-                Logger.Warn($"Using {placeId} ID for SOAP");
-            }
+            type.Replace("{placeId}", placeId.ToString());
+            type.Replace("{jobId}", jobId);
+            type.Replace("{port}", fakeahport.ToString());
+            type.Replace("{accesskey}", Config.AccessKey);
+            type.Replace("{teamcreate}", teamcreate.ToString());
 
-            client.DefaultRequestHeaders.Host = $"127.0.0.1:{port}";
-            type = type.Replace("{placeId}", placeId.ToString());
-            type = type.Replace("{jobId}", jobId.ToString());
-            type = type.Replace("{port}", fakeahport.ToString());
-            type = type.Replace("{accesskey}", Config.AccessKey.ToString());
-            type = type.Replace("{teamcreate}", teamcreate.ToString());
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
 <soapenv:Body>
@@ -397,66 +402,60 @@ static class Helpers
   </rob:OpenJob>
 </soapenv:Body>
 </soapenv:Envelope>";
-            using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}");
-            req.Content = new StringContent(soap, Encoding.UTF8, "text/xml"); // this as well
-            req.Headers.Add("SOAPAction", "OpenJob"); // important because rccservice wouldnt recongize this
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}/");
+            req.Version = HttpVersion.Version11;
+            req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
+
+            var bytes = Encoding.UTF8.GetBytes(soap);
+            req.Content = new ByteArrayContent(bytes);
+            req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
+
+            req.Headers.Add("SOAPAction", "OpenJob");
+            req.Headers.Host = $"127.0.0.1:{port}";
+            req.Headers.ConnectionClose = true;
+            client.DefaultRequestHeaders.ExpectContinue = false;
+
+            using var resp = client.SendAsync(req, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult();
+            var responseText = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
             if (Config.debug)
             {
-                Logger.Warn(type);
+                Logger.Warn($"SOAP status: {(int)resp.StatusCode}");
+                Logger.Warn("SOAP response:\n" + responseText);
             }
 
-            using var resp = client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult(); // POST! and then wait for result
-
-            using var stream = resp.Content.ReadAsStream(); // start reading
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-
-            var responseText = reader.ReadToEnd(); // done (:
-
-            if (string.IsNullOrWhiteSpace(responseText))
-                return resp.IsSuccessStatusCode;
+            if (!resp.IsSuccessStatusCode)
+            {
+                Logger.Error("RCCService returned error:\n" + responseText);
+                return false;
+            }
 
             if (category == 2)
             {
-                try
+                var doc = XDocument.Parse(responseText);
+
+                if (doc.Descendants().Any(e => e.Name.LocalName == "Fault"))
                 {
-                    var doc = XDocument.Parse(responseText);
-
-                    // boo
-                    if (doc.Descendants().Any(e => e.Name.LocalName == "faultsring"))
-                    {
-                        Logger.Error("RCCService errored:\n" + responseText);
-                        return false;
-                    }
-
-                    var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-
-                    if (value == null || string.IsNullOrWhiteSpace(value.Value))
-                    {
-                        Logger.Error(responseText);
-                        return false;
-                    }
-
-                    render = value.Value.Trim();
-                }
-                catch (Exception ex)
-                {
-                    //C# ohio
-                    Logger.Error("Couldn't parse XML: " + ex);
+                    Logger.Error("SOAP Fault:\n" + responseText);
                     return false;
                 }
+
+                var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
+                if (value == null || string.IsNullOrWhiteSpace(value.Value))
+                    return false;
+
+                render = value.Value.Trim();
             }
 
-            return resp.IsSuccessStatusCode;
+            return true;
         }
         catch (Exception ex)
         {
-            // WHAT JUST HAPPEND BRO
-            Logger.Error("SOAP error: " + ex);
+            Logger.Error("SOAP exception:\n" + ex);
             return false;
         }
     }
-
 
     private static void Kill(Process proc)
     {
