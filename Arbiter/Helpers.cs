@@ -216,7 +216,7 @@ static class Helpers
     {
         pid = -1;
         render = null;
-        fakeahport = 0;
+        fakeahport = 0; // w fake ah port
 
         var proc = RCCService(port);
         if (proc == null)
