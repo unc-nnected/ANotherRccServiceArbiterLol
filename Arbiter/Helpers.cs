@@ -408,11 +408,11 @@ static class Helpers
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
-            type.Replace("{placeId}", placeId.ToString());
-            type.Replace("{jobId}", jobId);
-            type.Replace("{port}", fakeahport.ToString());
-            type.Replace("{accesskey}", Config.AccessKey);
-            type.Replace("{teamcreate}", teamcreate.ToString());
+            type = type.Replace("{placeId}", placeId.ToString());
+            type = type.Replace("{jobId}", jobId);
+            type = type.Replace("{port}", fakeahport.ToString());
+            type = type.Replace("{accesskey}", Config.AccessKey);
+            type = type.Replace("{teamcreate}", teamcreate.ToString());
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
