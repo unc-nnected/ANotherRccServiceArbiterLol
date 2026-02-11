@@ -32,6 +32,7 @@ public class Program
                 Logger.Info($"Loaded {Config.RScript.Length} bytes from place render script");
                 Logger.Info($"Loaded {Config.RAScript.Length} bytes from avatar render script");
                 Logger.Info($"Loaded {Config.RMScript.Length} bytes from model render script");
+                Logger.Info($"Loaded {Config.RMMScript.Length} bytes from mesh render script");
                 Logger.Info($"Loaded {Config.BaseURL.Length} bytes from BaseURL");
                 Logger.Info("Config read");
             }
