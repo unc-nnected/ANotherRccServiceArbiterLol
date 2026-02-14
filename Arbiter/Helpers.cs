@@ -145,7 +145,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        if (!SOAP(jobId, port, placeId, Config.RScript, 60, 2, out render, false, 53640))
+        if (!SOAP(jobId, port, placeId, Config.RScript, 60, 2, out render, false))
         {
             Kill(proc);
             return false;
@@ -153,7 +153,7 @@ static class Helpers
         return true;
     }
 
-    public static bool ARender(string jobId, int port, int placeId, out int pid, out string? render)
+    public static bool ARender(string jobId, int port, int placeId, out int pid, out string? render, bool headshot)
     {
         pid = -1;
         render = null;
@@ -175,7 +175,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        if (!SOAP(jobId, port, placeId, Config.RAScript, 60, 2, out render, false, 53640))
+        if (!SOAP(jobId, port, placeId, Config.RAScript, 60, 2, out render, false, 53640, headshot))
         {
             Kill(proc);
             return false;
@@ -205,7 +205,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        if (!SOAP(jobId, port, placeId, Config.RMScript, 60, 2, out render, false, 53640))
+        if (!SOAP(jobId, port, placeId, Config.RMScript, 60, 2, out render, false))
         {
             Kill(proc);
             return false;
@@ -235,7 +235,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        if (!SOAP(jobId, port, placeId, Config.RMMScript, 60, 2, out render, false, 53640))
+        if (!SOAP(jobId, port, placeId, Config.RMMScript, 60, 2, out render, false))
         {
             Kill(proc);
             return false;
@@ -387,7 +387,7 @@ static class Helpers
         Logger.Error("Timed out waiting for RCCService");
         return false;
     }
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate, int fakeahport)
+    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false)
     {
         render = null;
 
@@ -413,6 +413,7 @@ static class Helpers
             type = type.Replace("{port}", fakeahport.ToString());
             type = type.Replace("{accesskey}", Config.AccessKey);
             type = type.Replace("{teamcreate}", teamcreate.ToString());
+            type = type.Replace("{isheadshot}", headshot.ToString());
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">

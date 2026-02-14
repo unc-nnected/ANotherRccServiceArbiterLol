@@ -155,6 +155,7 @@ public class Program
             if (body == null || body.UserId <= 0)
                 return Results.BadRequest(new { error = "badrequest" });
 
+            bool headshot = body.IsHeadshot;
             string jobId = Guid.NewGuid().ToString();
             int port = Helpers.GetPort();
 
@@ -162,7 +163,7 @@ public class Program
 
             Logger.Warn($"Received an avatar render request from {clientIP}, job={jobId} port={port}");
 
-            if (!Helpers.ARender(jobId, port, body.UserId, out int pid, out string? render))
+            if (!Helpers.ARender(jobId, port, body.UserId, out int pid, out string? render, headshot))
                 return Results.Problem("RCCService couldn't execute OpenJob");
 
             if (render == null)
@@ -395,7 +396,7 @@ public class Program
 
 // bunch of post data shit!
 public record RenderRequest(int PlaceId);
-public record ARenderRequest(int UserId);
+public record ARenderRequest(int UserId, bool IsHeadshot);
 public record MRenderRequest(int AssetId);
 public record MMRenderRequest(int MeshId);
 public record GameserverRequest(int PlaceId, bool TeamCreate);
