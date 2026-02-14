@@ -114,24 +114,33 @@ static class Helpers
     {
         while (true)
         {
-            int port = _random.Next(60000, 64989);
-            if (IsTCPPortBindable(port))
-                return port;
+            using (var listener = new TcpListener(IPAddress.Loopback, 0))
+            {
+                listener.Start();
+                int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+                if (port >= 60000 && port <= 64989)
+                {
+                    listener.Stop();
+                    return port;
+                }
+            }
         }
     }
 
-    public static UdpClient GetGameServerPort(out int port)
+    public static int GetGameServerPort()
     {
         while (true)
         {
-            // we toss the free gameserver port to OS, which will get us a free port, we mostly need 40000-59999
-            var udp = new UdpClient(0);
-            port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
-
-            if (port >= 40000 && port <= 59999)
-                return udp;
-
-            udp.Dispose();
+            using (var udp = new UdpClient(0))
+            {
+                int port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
+                if (port >= 40000 && port <= 59999)
+                {
+                    udp.Dispose();
+                    return port;
+                }
+            }
         }
     }
 
@@ -279,7 +288,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        UdpClient udp = GetGameServerPort(out fakeahport);
+        fakeahport = GetGameServerPort();
 
         if (!SOAP(jobId, port, placeId, Config.GSScript, 604800, 1, out render, teamcreate, fakeahport))
         {
