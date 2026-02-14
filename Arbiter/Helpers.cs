@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
@@ -12,6 +13,7 @@ static class Helpers
     private static readonly Dictionary<string, GSMJob> Jobs = new();
     private static readonly object JobsLock = new();
     private static bool _gsmStarted;
+    private static readonly Random _random = new();
 
     public static bool SysStats()
     {
@@ -23,7 +25,7 @@ static class Helpers
                 return false;
 
             // check if port is in use
-            if (!IsPortBindable(Config.port))
+            if (!IsTCPPortBindable(Config.port))
                 return false;
 
             // check if there's already an arbiter running
@@ -74,7 +76,7 @@ static class Helpers
     }
 
 
-    private static bool IsPortBindable(int port)
+    private static bool IsTCPPortBindable(int port)
     {
         try
         {
@@ -110,16 +112,27 @@ static class Helpers
 
     public static int GetPort()
     {
-        var r = new Random();
-        int port = r.Next(63000, 64989);
-        return port;
+        while (true)
+        {
+            int port = _random.Next(60000, 64989);
+            if (IsTCPPortBindable(port))
+                return port;
+        }
     }
 
-    public static int GetGameServerPort()
+    public static UdpClient GetGameServerPort(out int port)
     {
-        var r = new Random();
-        int port = r.Next(59999, 63000);
-        return port;
+        while (true)
+        {
+            // we toss the free gameserver port to OS, which will get us a free port, we mostly need 40000-59999
+            var udp = new UdpClient(0);
+            port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
+
+            if (port >= 40000 && port <= 59999)
+                return udp;
+
+            udp.Dispose();
+        }
     }
 
     public static bool Render(string jobId, int port, int placeId, out int pid, out string? render)
@@ -266,7 +279,7 @@ static class Helpers
             Logger.Info($"{jobId} started (pid={pid})");
         }
 
-        fakeahport = GetGameServerPort();
+        UdpClient udp = GetGameServerPort(out fakeahport);
 
         if (!SOAP(jobId, port, placeId, Config.GSScript, 604800, 1, out render, teamcreate, fakeahport))
         {
