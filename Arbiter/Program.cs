@@ -396,7 +396,7 @@ public class Program
 
 // bunch of post data shit!
 public record RenderRequest(int PlaceId);
-public record ARenderRequest(int UserId, bool IsHeadshot);
+public record ARenderRequest(int UserId, bool IsHeadshot, bool IsClothing);
 public record MRenderRequest(int AssetId);
 public record MMRenderRequest(int MeshId);
 public record GameserverRequest(int PlaceId, bool TeamCreate);

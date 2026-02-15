@@ -439,7 +439,7 @@ static class Helpers
         Logger.Error("Timed out waiting for RCCService");
         return false;
     }
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false)
+    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false)
     {
         render = null;
 
@@ -466,6 +466,7 @@ static class Helpers
             type = type.Replace("{accesskey}", Config.AccessKey);
             type = type.Replace("{teamcreate}", teamcreate.ToString());
             type = type.Replace("{isheadshot}", headshot.ToString());
+            type = type.Replace("{isclothing}", isclothing.ToString());
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
