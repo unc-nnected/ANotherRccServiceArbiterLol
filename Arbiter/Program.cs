@@ -387,7 +387,7 @@ public class Program
         });
         lifetime.ApplicationStopping.Register(() =>
         {
-            Logger.Print("Stopping ASP.NET service");
+            Logger.Print("Stopping service...");
         });
         Logger.Print("Intializing Game Monitor Service");
         Helpers.StartGSM();
