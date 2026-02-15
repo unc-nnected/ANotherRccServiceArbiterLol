@@ -320,9 +320,7 @@ static class Helpers
     {
         try
         {
-            // we get RCCService.exe from the custom path
             string RCCService = Path.Combine(Config.RCCDirectory, "RCCService.exe");
-
             bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
             ProcessStartInfo psi;
@@ -334,7 +332,6 @@ static class Helpers
 
             if (isWindows)
             {
-                // windows (:
                 psi = new ProcessStartInfo
                 {
                     FileName = RCCService,
@@ -343,14 +340,14 @@ static class Helpers
                     CreateNoWindow = false,
                     WorkingDirectory = Config.RCCDirectory
                 };
+
                 if (Config.debug)
                 {
-                    Logger.Info($"RCCServuce starting");
+                    Logger.Info("RCCServuce starting");
                 }
             }
             else
             {
-                // linux ):
                 psi = new ProcessStartInfo
                 {
                     FileName = "wine",
@@ -362,15 +359,47 @@ static class Helpers
 
                 if (Config.debug)
                 {
-                    Logger.Info($"RCCServuce starting via wine");
+                    Logger.Info("RCCServuce starting via Wine");
                 }
             }
 
-            return Process.Start(psi);
+            Process? proc = Process.Start(psi);
+
+            if (proc != null)
+            {
+                if (isWindows)
+                {
+                    proc.PriorityClass = ProcessPriorityClass.High;
+                }
+                else
+                {
+                    try
+                    {
+                        using (var process = new Process())
+                        {
+                            process.StartInfo.FileName = "renice";
+                            process.StartInfo.Arguments = $"-n -5 -p {proc.Id}";
+                            process.StartInfo.UseShellExecute = false;
+                            process.Start();
+                            process.WaitForExit();
+                        }
+                    }
+                    catch
+                    {
+                        if (Config.debug) Logger.Warn("Couldn't make RCCService higher priority. (SUDO needed?)");
+                    }
+                }
+
+                if (Config.debug)
+                {
+                    Logger.Info("RCCService started");
+                }
+            }
+
+            return proc;
         }
         catch (Exception ex)
         {
-            // What
             Logger.Error("RCCService couldn't start: " + ex.Message);
             return null;
         }
