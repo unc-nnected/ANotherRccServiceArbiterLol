@@ -461,8 +461,10 @@ static class Helpers
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
-            
-            type = File.ReadAllText(Config.whereisthedamnscriptat);
+            if (type == Config.GSScript)
+            {
+                type = File.ReadAllText(Config.whereisthedamnscriptat);
+            }
             type = type.Replace("{placeId}", placeId.ToString());
             type = type.Replace("{jobId}", jobId);
             type = type.Replace("{port}", fakeahport.ToString());
