@@ -321,6 +321,12 @@ static class Helpers
     {
         try
         {
+            if (Config.debug)
+            {
+                Logger.Info("Reloading Configuration");
+            }
+            Config.ReloadScripts();
+
             string RCCService = Path.Combine(Config.RCCDirectory, "RCCService.exe");
             bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
@@ -461,11 +467,6 @@ static class Helpers
                 Timeout = Timeout.InfiniteTimeSpan
             };
 
-            if (type == Config.GSScript)
-            {
-                type = File.ReadAllText(Config.whereisthedamnscriptat);
-                Config.GSScript = type;
-            }
             type = type.Replace("{placeId}", placeId.ToString());
             type = type.Replace("{jobId}", jobId);
             type = type.Replace("{port}", fakeahport.ToString());
@@ -505,7 +506,6 @@ static class Helpers
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
             client.DefaultRequestHeaders.ExpectContinue = false;
-
             using var resp = client.SendAsync(req, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult();
             var responseText = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 

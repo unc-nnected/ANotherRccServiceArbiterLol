@@ -7,6 +7,9 @@
     <StartupObject>Program</StartupObject>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
     <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>ANRSAL</AssemblyName>
+    <AssemblyTitle>ANotherRccServiceArbiterLol</AssemblyTitle>
+    <RootNamespace>ANotherRccServiceArbiterLol.Replace(" ", "_"))</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

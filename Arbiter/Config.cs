@@ -8,13 +8,52 @@ static class Config
     public static string RAScript = "print('get a avatar render script nerd')";
     public static string RMScript = "print('get a model render script nerd')";
     public static string RMMScript = "print('get a mesh render script nerd')";
-    public static string whereisthedamnscriptat = "";
+    public static string GSScriptPath { get; private set; } = "";
+    public static string RScriptPath { get; private set; } = "";
+    public static string RAScriptPath { get; private set; } = "";
+    public static string RMScriptPath { get; private set; } = "";
+    public static string RMMScriptPath { get; private set; } = "";
     public static int port { get; private set; } = 7000;
     public static int cores { get; private set; } = 1;
     public static bool debug { get; private set; } = false;
     public static string SECRET = "my-mother-ate-fries-lol";
     public static string AccessKey = "my-mother-ate-fries-lol";
     public static string FakeSECRET = "";
+    public static bool experimental { get; private set; } = false;
+    public static void ReloadScripts()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(GSScriptPath) && File.Exists(GSScriptPath))
+            {
+                GSScript = File.ReadAllText(GSScriptPath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(RScriptPath) && File.Exists(RScriptPath))
+            {
+                RScript = File.ReadAllText(RScriptPath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(RAScriptPath) && File.Exists(RAScriptPath))
+            {
+                RAScript = File.ReadAllText(RAScriptPath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(RMScriptPath) && File.Exists(RMScriptPath))
+            {
+                RMScript = File.ReadAllText(RMScriptPath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(RMMScriptPath) && File.Exists(RMMScriptPath))
+            {
+                RMMScript = File.ReadAllText(RMMScriptPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Configuration reload failed: " + ex);
+        }
+    }
     public static void Parse(string[] args)
     {
         for (int i = 0; i < args.Length; i++)
@@ -42,7 +81,6 @@ static class Config
                         throw new FileNotFoundException("gameserver script not found", path);
 
                     GSScript = File.ReadAllText(path);
-                    whereisthedamnscriptat = path;
                     break;
 
                 case "--rscript": // render script
@@ -132,6 +170,10 @@ static class Config
                         throw new ArgumentException("--accesskey requires a value");
 
                     AccessKey = args[++i];
+                    break;
+
+                case "--experimental": // experimental
+                    experimental = true;
                     break;
             }
         }
