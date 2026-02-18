@@ -10,6 +10,12 @@
     <AssemblyName>ANRSAL</AssemblyName>
     <AssemblyTitle>ANotherRccServiceArbiterLol</AssemblyTitle>
     <RootNamespace>ANotherRccServiceArbiterLol.Replace(" ", "_"))</RootNamespace>
+    <Description>ANRSAL is an arbiter designed to make gameservers and renders with use of RCCService.</Description>
+    <Copyright>Copyright 2026, Aria</Copyright>
+    <Authors>Aria, grace</Authors>
+    <Company>unconnected labs</Company>
+    <Title>ANotherRccServiceArbiterLol</Title>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
   <ItemGroup>
