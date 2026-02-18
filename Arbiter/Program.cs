@@ -20,7 +20,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        Console.Title = "Arbiter";
+        Console.Title = "ANotherRccServiceArbiterLol";
         try
         {
             // parse config
