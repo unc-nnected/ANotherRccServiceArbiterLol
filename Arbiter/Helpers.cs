@@ -129,6 +129,40 @@ static class Helpers
         return proc;
     }
 
+    private static (Process? proc, int port) startDedicatedRCCService()
+    {
+        int port = GetPort();
+        var proc = RCCService(port);
+        if (proc == null) return (null, 0);
+
+        proc.EnableRaisingEvents = true;
+        proc.Exited += (_, __) => RCCServiceExit(proc.Id, port);
+
+        const int attempts = 20;
+        bool alive = false;
+        for (int i = 0; i < attempts; i++)
+        {
+            try
+            {
+                var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
+                alive = true;
+                break;
+            }
+            catch { Thread.Sleep(250); }
+        }
+        if (!alive) { Kill(proc); return (null, 0); }
+
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 5, 0, out tmp); } catch { }
+
+        lock (PoolLock)
+        {
+            usage[port] = 0;
+            active[port] = proc;
+        }
+
+        return (proc, port);
+    }
+
     private static (Process? proc, int port) getRCCService()
     {
         lock (PoolLock)
@@ -450,7 +484,7 @@ static class Helpers
         fakeahport = GetGameServerPort();
         pid = 0;
 
-        var (proc, SOAPPort) = getRCCService();
+        var (proc, SOAPPort) = startDedicatedRCCService();
         if (proc == null) return 0;
 
         pid = proc.Id;
@@ -505,6 +539,9 @@ static class Helpers
             var proc = Process.Start(psi);
             if (proc == null) return null;
 
+            proc.EnableRaisingEvents = true;
+            proc.Exited += (_, __) => RCCServiceExit(proc.Id, port);
+
             if (win) proc.PriorityClass = ProcessPriorityClass.High;
 
             bool ready = false;
@@ -525,7 +562,8 @@ static class Helpers
             try
             {
                 string? r;
-                SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
+                //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
+                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 5, 0, out tmp); } catch { }
             }
             catch { }
 
@@ -779,5 +817,19 @@ static class Helpers
             }
         }
         return null;
+    }
+
+    private static void RCCServiceExit(int pid, int port)
+    {
+        lock (PoolLock)
+        {
+            if (idle.Remove(port)) { }
+            if (active.Remove(port)) { }
+            if (pending.Remove(port)) { }
+
+            usage.Remove(port);
+        }
+
+        keepPoolsFull();
     }
 }
