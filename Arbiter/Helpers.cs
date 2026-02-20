@@ -167,44 +167,38 @@ static class Helpers
     {
         lock (PoolLock)
         {
-            while (idle.Count > 0)
-            {
-                var kv = idle.First();
-                idle.Remove(kv.Key);
+            var kv = idle.OrderBy(kv => usage.TryGetValue(kv.Key, out var c) ? c : 0).FirstOrDefault();
 
-                if (!AwaitRCCService(kv.Key, 2))
+            if (!kv.Equals(default(KeyValuePair<int, Process>)))
+            {
+                int port = kv.Key;
+                var proc = kv.Value;
+                idle.Remove(port);
+
+                if (!AwaitRCCService(port, 2))
                 {
-                    Kill(kv.Value);
-                    continue;
+                    Kill(proc);
+                    usage.Remove(port);
+                    return getRCCService();
                 }
 
-                active[kv.Key] = kv.Value;
-
-                if (!usage.ContainsKey(kv.Key))
-                    usage[kv.Key] = 0;
+                active[port] = proc;
+                usage[port] = usage.TryGetValue(port, out var c) ? c + 1 : 1;
 
                 keepPoolsFull();
-                return (kv.Value, kv.Key);
+                return (proc, port);
             }
 
-            int port = GetPort();
-            var proc = startPending(port);
-            if (proc == null)
+            int newPort = GetPort();
+            var newProc = startPending(newPort);
+            if (newProc == null)
                 return (null, 0);
 
-            lock (PoolLock)
-            {
-                pending.Remove(port);
+            active[newPort] = newProc;
+            usage[newPort] = 1;
 
-                if (proc != null)
-                {
-                    usage[port] = 0;
-                    idle[port] = proc;
-                }
-            }
-
-            active[port] = proc;
-            return (proc, port);
+            keepPoolsFull();
+            return (newProc, newPort);
         }
     }
 
