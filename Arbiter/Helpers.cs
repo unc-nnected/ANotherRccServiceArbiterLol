@@ -26,6 +26,8 @@ static class Helpers
     {
         Timeout = Timeout.InfiniteTimeSpan
     };
+    private static readonly Dictionary<int, int> usage = new();
+    private const int MaxJobs = 20;
 
     private static void keepPoolsFull()
     {
@@ -92,6 +94,11 @@ static class Helpers
             return null;
         }
 
+        lock (PoolLock)
+        {
+            usage[port] = 0;
+        }
+
         const int attempts = 10;
         var alive = false;
         for (int i = 0; i < attempts; i++)
@@ -138,6 +145,10 @@ static class Helpers
                 }
 
                 active[kv.Key] = kv.Value;
+
+                if (!usage.ContainsKey(kv.Key))
+                    usage[kv.Key] = 0;
+
                 keepPoolsFull();
                 return (kv.Value, kv.Key);
             }
@@ -146,6 +157,17 @@ static class Helpers
             var proc = startPending(port);
             if (proc == null)
                 return (null, 0);
+
+            lock (PoolLock)
+            {
+                pending.Remove(port);
+
+                if (proc != null)
+                {
+                    usage[port] = 0;
+                    idle[port] = proc;
+                }
+            }
 
             active[port] = proc;
             return (proc, port);
@@ -156,11 +178,21 @@ static class Helpers
     {
         lock (PoolLock)
         {
-            if (active.TryGetValue(port, out var proc))
+            if (!active.TryGetValue(port, out var proc))
+                return;
+
+            active.Remove(port);
+
+            if (usage.TryGetValue(port, out var count) && count >= MaxJobs)
             {
-                active.Remove(port);
-                idle[port] = proc;
+                Kill(proc);
+                usage.Remove(port);
+
+                keepPoolsFull();
+                return;
             }
+
+            idle[port] = proc;
         }
     }
 
@@ -337,6 +369,11 @@ static class Helpers
             return false;
         }
 
+        lock (PoolLock)
+        {
+            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
+        }
+
         releaseRCCService(SOAPPort);
         return true;
     }
@@ -352,6 +389,11 @@ static class Helpers
         {
             Kill(proc);
             return false;
+        }
+
+        lock (PoolLock)
+        {
+            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
         }
 
         releaseRCCService(SOAPPort);
@@ -371,6 +413,11 @@ static class Helpers
             return false;
         }
 
+        lock (PoolLock)
+        {
+            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
+        }
+
         releaseRCCService(SOAPPort);
         return true;
     }
@@ -386,6 +433,11 @@ static class Helpers
         {
             Kill(proc);
             return false;
+        }
+
+        lock (PoolLock)
+        {
+            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
         }
 
         releaseRCCService(SOAPPort);
@@ -423,6 +475,11 @@ static class Helpers
                 Players = 0,
                 Alive = true
             };
+        }
+
+        lock (PoolLock)
+        {
+            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
         }
 
         return fakeahport;
