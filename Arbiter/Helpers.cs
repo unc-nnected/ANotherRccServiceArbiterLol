@@ -29,6 +29,11 @@ static class Helpers
     private static readonly Dictionary<int, int> usage = new();
     private const int MaxJobs = 20;
 
+    private static int howmuchRCCService()
+    {
+        return idle.Count + pending.Count + active.Count;
+    }
+
     private static void keepPoolsFull()
     {
         lock (PoolLock)
@@ -36,7 +41,7 @@ static class Helpers
             if (_isFilling)
                 return;
 
-            int current = idle.Count + pending.Count;
+            int current = howmuchRCCService();
             if (current >= TargetPool)
                 return;
 
@@ -53,12 +58,11 @@ static class Helpers
 
                     lock (PoolLock)
                     {
-                        int current = idle.Count + pending.Count;
-                        if (current >= TargetPool)
+                        if (howmuchRCCService() >= TargetPool)
                             break;
 
                         port = GetPort();
-                        pending[port] = null;
+                        pending[port] = null!;
                     }
 
                     var proc = startPending(port);
@@ -68,20 +72,16 @@ static class Helpers
                         pending.Remove(port);
 
                         if (proc != null)
-                        {
                             idle[port] = proc;
-                        }
                     }
 
-                    Thread.Sleep(500);
+                    Thread.Sleep(200);
                 }
             }
             finally
             {
                 lock (PoolLock)
-                {
                     _isFilling = false;
-                }
             }
         });
     }
@@ -122,7 +122,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out tmp);
+            SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 10, 0, out tmp);
         }
         catch {}
 
@@ -185,19 +185,32 @@ static class Helpers
                 active[port] = proc;
                 usage[port] = usage.TryGetValue(port, out var c) ? c + 1 : 1;
 
-                keepPoolsFull();
                 return (proc, port);
             }
 
+            if (howmuchRCCService() >= TargetPool)
+            {
+                Monitor.Wait(PoolLock, 500);
+                return getRCCService();
+            }
+
             int newPort = GetPort();
+            pending[newPort] = null!;
+
+            Monitor.Exit(PoolLock);
+
             var newProc = startPending(newPort);
+
+            Monitor.Enter(PoolLock);
+
+            pending.Remove(newPort);
+
             if (newProc == null)
                 return (null, 0);
 
             active[newPort] = newProc;
             usage[newPort] = 1;
 
-            keepPoolsFull();
             return (newProc, newPort);
         }
     }
@@ -215,12 +228,13 @@ static class Helpers
             {
                 Kill(proc);
                 usage.Remove(port);
-
-                keepPoolsFull();
-                return;
+            }
+            else
+            {
+                idle[port] = proc;
             }
 
-            idle[port] = proc;
+            Monitor.Pulse(PoolLock);
         }
     }
 
@@ -397,11 +411,6 @@ static class Helpers
             return false;
         }
 
-        lock (PoolLock)
-        {
-            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
-        }
-
         releaseRCCService(SOAPPort);
         return true;
     }
@@ -417,11 +426,6 @@ static class Helpers
         {
             Kill(proc);
             return false;
-        }
-
-        lock (PoolLock)
-        {
-            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
         }
 
         releaseRCCService(SOAPPort);
@@ -441,11 +445,6 @@ static class Helpers
             return false;
         }
 
-        lock (PoolLock)
-        {
-            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
-        }
-
         releaseRCCService(SOAPPort);
         return true;
     }
@@ -461,11 +460,6 @@ static class Helpers
         {
             Kill(proc);
             return false;
-        }
-
-        lock (PoolLock)
-        {
-            usage[SOAPPort] = usage.TryGetValue(SOAPPort, out var c) ? c + 1 : 1;
         }
 
         releaseRCCService(SOAPPort);
@@ -817,11 +811,12 @@ static class Helpers
     {
         lock (PoolLock)
         {
-            if (idle.Remove(port)) { }
-            if (active.Remove(port)) { }
-            if (pending.Remove(port)) { }
-
+            idle.Remove(port);
+            active.Remove(port);
+            pending.Remove(port);
             usage.Remove(port);
+
+            Monitor.PulseAll(PoolLock);
         }
 
         keepPoolsFull();
