@@ -16,7 +16,7 @@
     <Company>unconnected labs</Company>
     <Title>ANotherRccServiceArbiterLol</Title>
     <NeutralLanguage>en</NeutralLanguage>
-    <FileVersion>1.2.2.3</FileVersion>
+    <FileVersion>1.2.2.4</FileVersion>
     <AssemblyVersion></AssemblyVersion>
   </PropertyGroup>
 
@@ -43,11 +43,10 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <DebugType>none</DebugType>
   </PropertyGroup>
-
   <ItemGroup>
-    <Content Include="favicon.ico" />
-	<EmbeddedResource Include="videos\**\*.mp4" />
-	<EmbeddedResource Include="videos\**\*.mov" />
+    <Content Include="favicon.ico">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

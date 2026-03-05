@@ -47,8 +47,9 @@ static class Config
                     string[] lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
                     if (lines.Length == 0 || !lines[0].StartsWith("%") || !lines[0].EndsWith("%"))
                     {
-                        Logger.Error($"Missing signature: {path}");
-                        return;
+                        SignScript(path, content);
+                        content = File.ReadAllText(path);
+                        lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
                     }
 
                     string signatureLine = lines[0];
@@ -85,10 +86,11 @@ static class Config
         {
             byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(script));
             string base64 = Convert.ToBase64String(hash);
-
             char[] arr = base64.ToCharArray();
             Array.Reverse(arr);
-            return "%" + new string(arr) + "%";
+            string reversedBase64 = new string(arr);
+            Logger.Print($"Signed script with {reversedBase64}");
+            return "--anrsalsig" + reversedBase64;
         }
     }
 
@@ -96,12 +98,12 @@ static class Config
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(signature) || signature.Length < 2)
+            if (string.IsNullOrWhiteSpace(signature) || !signature.StartsWith("--rbxsig"))
                 return false;
 
-            string trimmed = signature.Substring(1, signature.Length - 2);
+            string base64 = signature.Substring(9);
 
-            char[] arr = trimmed.ToCharArray();
+            char[] arr = base64.ToCharArray();
             Array.Reverse(arr);
             string originalBase64 = new string(arr);
 

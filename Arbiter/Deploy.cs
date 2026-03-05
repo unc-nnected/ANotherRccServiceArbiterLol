@@ -17,25 +17,21 @@ public static class Deploy
 
     private static async Task GetDeploy()
     {
-        string arbiter = Path.GetFileName(Process.GetCurrentProcess().MainModule?.FileName);
-        string arbiterDLL = Path.GetFileNameWithoutExtension(arbiter) + ".dll";
-        var required = new[] { arbiter, arbiterDLL };
-        if (string.IsNullOrEmpty(arbiter))
-        {
-            throw new InvalidOperationException("An unexpected error occurred while updating Arbiter. 0x01");
-        }
+        string arbiterExe = Path.GetFileName(Process.GetCurrentProcess().MainModule?.FileName);
+        string arbiterDll = Path.GetFileNameWithoutExtension(arbiterExe) + ".dll";
+        var required = new[] { arbiterExe, arbiterDll };
 
-        string name = Path.GetFileName(arbiter);
+        if (string.IsNullOrEmpty(arbiterExe))
+            throw new InvalidOperationException("An unexpected error occurred while updating Arbiter. 0x01");
 
         using var client = new HttpClient();
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 ANRSAL");
+
         var json = await client.GetStringAsync("https://www.couscs.com/ANRSAL/version.json");
         if (!json.TrimStart().StartsWith("{"))
-        {
             throw new InvalidOperationException("An unexpected error occurred while updating Arbiter. 0x02");
-        }
-        var manifest = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
 
+        var manifest = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
         if (manifest == null) return;
 
         string latestVersion = manifest["version"];
@@ -45,22 +41,25 @@ public static class Deploy
 
         Logger.Warn("Getting the latest Arbiter...");
 
-        string temp = Path.Combine(Path.GetTempPath(), name + ".tmp");
+        var temp = new Dictionary<string, string>();
         foreach (var file in required)
         {
+            string tmp = Path.Combine(Path.GetTempPath(), file + ".tmp");
+            temp[file] = tmp;
+
             using var response = await client.GetAsync($"https://www.couscs.com/ANRSAL/{file}", HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
+
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;
-            var canReportProgress = totalBytes != -1;
+            bool canReportProgress = totalBytes != -1;
 
             using var stream = await response.Content.ReadAsStreamAsync();
-            using var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None);
 
             var buffer = new byte[81920];
             long totalRead = 0;
             int read;
             var lastReported = DateTime.MinValue;
-            var sw = Stopwatch.StartNew();
             long bytesSinceLast = 0;
 
             while ((read = await stream.ReadAsync(buffer)) > 0)
@@ -78,7 +77,7 @@ public static class Deploy
                         double percent = (double)totalRead / totalBytes * 100;
                         double MBDownloaded = totalRead / 1024.0 / 1024.0;
                         double MBTotal = totalBytes / 1024.0 / 1024.0;
-                        double speed = bytesSinceLast / 1024.0 / 1024.0 / 0.5;
+                        double speed = bytesSinceLast / 1024.0 / 1024.0 / 0.5; // MB
                         bytesSinceLast = 0;
 
                         double remainingSec = ((totalBytes - totalRead) / 1024.0 / 1024.0) / speed;
@@ -91,25 +90,41 @@ public static class Deploy
                     }
                     else
                     {
-                        Console.Write($"\rDownloaded {totalRead / 1024.0 / 1024.0:0.00} MB");
+                        Console.Write($"\rDownloaded {totalRead / 1024.0 / 1024.0:0.00} MB | {file}");
                     }
                 }
             }
+
+            Console.WriteLine();
         }
 
-        foreach (var file in required)
+        foreach (var kvp in temp)
         {
-            string tempnumbatwo = Path.Combine(Path.GetTempPath(), file + ".tmp");
-            string target = Path.Combine(AppContext.BaseDirectory, file);
+            string target = Path.Combine(AppContext.BaseDirectory, kvp.Key);
+            string tempnumbatwo = Path.Combine(Path.GetTempPath(), kvp.Key + ".tmp");
+
+            string wait = kvp.Key.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? kvp.Key : required[0];
 
             Process.Start(new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/C timeout 1 & move /Y \"{tempnumbatwo}\" \"{target}\" & start \"\" \"{Path.Combine(AppContext.BaseDirectory, required[0])}\"",
+                Arguments = $"/C " +
+                    $":loop & " +
+                    $"tasklist | find \"{wait}\" >nul && timeout /t 1 >nul && goto loop & " +
+                    // im killing myself
+                    $"move /Y \"{tempnumbatwo}\" \"{target}\"" + (kvp.Key.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? $" & start \"\" \"{target}\"" : ""),
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             });
         }
+
+        Logger.Warn("Restarting ANRSAL...");
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = Path.Combine(AppContext.BaseDirectory, required[0]),
+            UseShellExecute = true
+        });
 
         Environment.Exit(0);
     }
