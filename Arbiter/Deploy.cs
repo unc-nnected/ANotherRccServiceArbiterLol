@@ -105,7 +105,7 @@ public static class Deploy
             Process.Start(new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/C timeout 1 & move /Y \"{tempnumbatwo}\" \"{target}\"",
+                Arguments = $"/C timeout 1 & move /Y \"{tempnumbatwo}\" \"{target}\" & start \"\" \"{Path.Combine(AppContext.BaseDirectory, required[0])}\"",
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             });
