@@ -761,7 +761,7 @@ static class Helpers
 
             if (!valid)
             {
-                Logger.Error("Script verification failed, please check your script signatures and try again");
+                Logger.Error($"Script verification failed, please check your script signatures and try again (signature: {signatureLine})");
                 return false;
             } else
             {

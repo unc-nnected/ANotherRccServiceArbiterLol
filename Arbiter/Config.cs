@@ -41,8 +41,6 @@ static class Config
                 string content = File.ReadAllText(path);
                 content = content.Replace("\r\n", "\n").Trim();
 
-                string scriptToLoad = content;
-
                 if (signing)
                 {
                     var lines = content.Split('\n', StringSplitOptions.None);
@@ -57,17 +55,20 @@ static class Config
                     }
 
                     string signatureLine = lines[0].Trim();
+                    string scriptWithoutSig = string.Join("\n", lines.Skip(1)).Trim();
 
-                    scriptToLoad = string.Join("\n", lines.Skip(1)).Trim();
-
-                    if (!Verification(scriptToLoad, signatureLine))
+                    if (!Verification(scriptWithoutSig, signatureLine))
                     {
                         Logger.Error($"Signature invalid: {path}, {signatureLine}");
                         return;
                     }
-                }
 
-                scriptField = scriptToLoad;
+                    scriptField = signatureLine + "\n" + scriptWithoutSig;
+                }
+                else
+                {
+                    scriptField = content;
+                }
             }
 
             LoadScript(ref GSScript, GSScriptPath);
