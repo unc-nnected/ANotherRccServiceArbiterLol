@@ -13,8 +13,9 @@ Now everybody, do the propaganda
 And sing along to the age of paranoia
 
 */
-using System.Text.Json;
 using System.Reflection;
+using System.Text.Json;
+using System.Threading.RateLimiting;
 
 public class Program
 {
@@ -64,6 +65,55 @@ public class Program
         Logger.Print("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddPolicy("strict", context =>
+            {
+                var ip = context.Request.Headers.TryGetValue("X-Forwarded-For", out var f) ? f.ToString().Split(',')[0] : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetTokenBucketLimiter(
+                    ip,
+                    _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = 10,
+                        TokensPerPeriod = 10,
+                        ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 2
+                    });
+            });
+
+            options.AddPolicy("unstrict", context =>
+            {
+                var ip = context.Request.Headers.TryGetValue("X-Forwarded-For", out var f) ? f.ToString().Split(',')[0] : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetConcurrencyLimiter(
+                    ip,
+                    _ => new ConcurrencyLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 20
+                    });
+            });
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            {
+                var ip = context.Request.Headers.TryGetValue("X-Forwarded-For", out var f) ? f.ToString().Split(',')[0] : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetTokenBucketLimiter(
+                    ip,
+                    _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = 20,
+                        TokensPerPeriod = 20,
+                        ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                        QueueLimit = 2
+                    });
+            });
+
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        });
+
         var app = builder.Build();
 
         app.Use(async (context, next) =>
@@ -85,6 +135,7 @@ public class Program
             await next();
         });
 
+        app.UseRateLimiter();
         app.MapPost("/api/v1/gameserver", async (HttpRequest req) =>
         {
             // check authorization so we wont get random ass gameservers
@@ -117,7 +168,7 @@ public class Program
                 return Results.Problem("RCCService couldn't execute OpenJob");
 
             return Results.Json(new { status = "ready", jobId, fakeahport, pid });
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/gameserver/kill", (HttpRequest http, KillRequest req) =>
         {
@@ -144,7 +195,7 @@ public class Program
                 pid = req.pid,
                 jobId = job?.JobId
             });
-        });
+        }).RequireRateLimiting("unstrict");
 
         app.MapGet("/api/v1/health", () =>
         {
@@ -166,7 +217,7 @@ public class Program
                 status = "alive",
                 ram = MathF.Round(ram, 1)
             });
-        });
+        }).RequireRateLimiting("unstrict");
 
         app.MapPost("/api/v1/avatar-render", async (HttpRequest req) =>
         {
@@ -200,7 +251,7 @@ public class Program
                 jobId,
                 base64 = render
             });
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/place-render", async (HttpRequest req) =>
         {
@@ -233,7 +284,7 @@ public class Program
                 jobId,
                 base64 = render
             });
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/model-render", async (HttpRequest req) =>
         {
@@ -266,7 +317,7 @@ public class Program
                 jobId,
                 base64 = render
             });
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/mesh-render", async (HttpRequest req) =>
         {
@@ -299,7 +350,7 @@ public class Program
                 jobId,
                 base64 = render
             });
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/renewlease", (HttpRequest req, RenewLeaseBody body) =>
         {
@@ -313,18 +364,19 @@ public class Program
 
             var ok = Helpers.RenewLease(body.jobId, body.seconds);
             return ok ? Results.Ok() : Results.NotFound();
-        });
+        }).RequireRateLimiting("unstrict");
 
-        app.MapGet("/api/v1/getalljobs", (HttpRequest req, int? port) =>
+        app.MapGet("/api/v1/getalljobs", (HttpRequest req, int? port, int? limit) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
                 return Results.Json(new { error = "unauthorized" }, statusCode: 401);
             }
 
-            var jobs = Helpers.GetAllJobs(port);
+            int fakeahjobs = Math.Clamp(limit ?? 50, 1, 50);
+            var jobs = Helpers.GetAllJobs(port, fakeahjobs);
             return Results.Json(jobs);
-        });
+        }).RequireRateLimiting("strict");
 
         app.MapPost("/api/v1/presence/join", (HttpRequest req, PresenceBody body) =>
         {
@@ -335,7 +387,7 @@ public class Program
 
             var ok = Helpers.UpdatePresence(body.jobId, joining: true);
             return ok ? Results.Ok() : Results.NotFound();
-        });
+        }).RequireRateLimiting("unstrict");
 
         app.MapPost("/api/v1/presence/leave", (HttpRequest req, PresenceBody body) =>
         {
@@ -346,7 +398,7 @@ public class Program
 
             var ok = Helpers.UpdatePresence(body.jobId, joining: false);
             return ok ? Results.Ok() : Results.NotFound();
-        });
+        }).RequireRateLimiting("unstrict");
 
         app.MapGet("/api/v1/job/{jobId}", (HttpRequest req, string jobId) =>
         {
@@ -361,7 +413,7 @@ public class Program
                 return Results.NotFound();
 
             return Results.Json(job);
-        });
+        }).RequireRateLimiting("strict"); // dont care honestly
 
         Logger.Print("Intializing ASP.NET Web Service");
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();

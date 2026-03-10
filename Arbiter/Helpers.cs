@@ -952,12 +952,25 @@ static class Helpers
         }
     }
 
-    public static List<object> GetAllJobs(int? port = null)
+    public static List<object> GetAllJobs(int? port = null, int? limit = null)
     {
         lock (JobsLock)
         {
-            // WTF IS THIS LINE OF CODE
-            return Jobs.Values.Where(j => j.Alive && (port == null || j.Port == port)).Select(j => new { j.JobId, j.PlaceId, j.Players, j.Port, expiresAt = j.ExpiresAt }).Cast<object>().ToList();
+            var query = Jobs.Values
+                            .Where(j => j.Alive && (port == null || j.Port == port))
+                            .Select(j => new
+                            {
+                                j.JobId,
+                                j.PlaceId,
+                                j.Players,
+                                j.Port,
+                                expiresAt = j.ExpiresAt
+                            });
+
+            if (limit.HasValue)
+                query = query.Take(limit.Value);
+
+            return query.Cast<object>().ToList();
         }
     }
 
