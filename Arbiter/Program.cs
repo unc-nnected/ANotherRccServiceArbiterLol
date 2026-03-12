@@ -61,7 +61,6 @@ public class Program
             Logger.Warn("SysStats skipped");
         }
 
-        await Deploy.Start();
         Logger.Print("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
