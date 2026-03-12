@@ -60,7 +60,7 @@ public class Program
             // nevermind
             Logger.Warn("SysStats skipped");
         }
-
+        
         Logger.Print("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
