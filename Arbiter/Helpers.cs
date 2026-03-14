@@ -316,7 +316,7 @@ static class Helpers
                     }
                     else
                     {
-                        ready = active.Keys.Concat(idle.Keys).All(port => AwaitRCCService(port, 1));
+                        ready = active.Keys.Concat(idle.Keys).All(port => AwaitRCCService(port, 5000));
                     }
 
                     Config.Ready = ready;
@@ -734,7 +734,7 @@ static class Helpers
             Thread.Sleep(250);
         }
 
-        Logger.Error("Timed out waiting for RCCService");
+        Logger.Error($"Timed out waiting for RCCService on {port}");
         return false;
     }
 
@@ -812,10 +812,9 @@ static class Helpers
                 xml.AppendLine("    </rob:arguments>");
             }
 
-            var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
+            var soap = $@"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
 <soapenv:Body>
-  <rob:OpenJob>
+  <rob:OpenJobEx>
     <rob:job>
       <rob:id>{jobId}</rob:id>
       <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
@@ -828,7 +827,7 @@ static class Helpers
       ]]></rob:script>
 {xml}
     </rob:script>
-  </rob:OpenJob>
+  </rob:OpenJobEx>
 </soapenv:Body>
 </soapenv:Envelope>";
 
@@ -837,7 +836,7 @@ static class Helpers
             req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
             req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
-            req.Headers.Add("SOAPAction", "OpenJob");
+            req.Headers.Add("SOAPAction", "OpenJobEx");
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
             client.DefaultRequestHeaders.ExpectContinue = false;
