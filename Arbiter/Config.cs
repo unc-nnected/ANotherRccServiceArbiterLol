@@ -29,6 +29,7 @@ static class Config
     public static string name = "RCCService";
     public static bool signing { get; private set; } = false;
     public static bool inject { get; private set; } = false;
+    public static bool autistic { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -296,6 +297,10 @@ static class Config
 
                 case "--inject": // inject a script after spawning in new gameserver, its for JSON RCCServices because roblox sucks.
                     inject = true;
+                    break;
+
+                case "--autisticrcc": // FUCK YOU RCCSERVICE I HATE YOU
+                    autistic = true;
                     break;
             }
         }

@@ -738,11 +738,17 @@ static class Helpers
         return false;
     }
 
-    static bool fuckyourccihopeyoufuckingdieyoupieceofshitIHATEROBLOXOHMYFUCKINGGOD(string s)
+    private static bool fixitup(string input, out string output)
     {
+        output = input.Trim().Replace("\r", "").Replace("\n", "").Replace(" ", "").Replace('-', '+').Replace('_', '/');
+        int mod = output.Length % 4;
+        if (mod == 2) output += "==";
+        else if (mod == 3) output += "=";
+        else if (mod == 1) return false;
+
         try
         {
-            Convert.FromBase64String(s.Trim().Replace("\r", "").Replace("\n", ""));
+            Convert.FromBase64String(output);
             return true;
         }
         catch
@@ -776,7 +782,8 @@ static class Helpers
             {
                 Logger.Error($"Script verification failed, please check your script signatures and try again (signature: {signatureLine})");
                 return false;
-            } else
+            }
+            else
             {
                 if (Config.debug)
                     Logger.Print("Signature is valid");
@@ -786,7 +793,7 @@ static class Helpers
         }
         try
         {
-            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.Expect100Continue = Config.autistic;
             ServicePointManager.UseNagleAlgorithm = false;
 
             type = type.Replace("{placeId}", placeId.ToString());
@@ -825,22 +832,23 @@ static class Helpers
                 xml.AppendLine("    </rob:arguments>");
             }
 
-            var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soapenv:Envelope xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"" xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
-  <soapenv:Body>
-    <rob:OpenJob>
-      <rob:job>
-        <rob:id>{jobId}</rob:id>
-        <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
-        <rob:cores>{Config.cores}</rob:cores>
-      </rob:job>
-      <rob:script>
-        <rob:name>{jobId}</rob:name>
-        <rob:script><![CDATA[{type}]]></rob:script>
-      </rob:script>
-      {xml}
-    </rob:OpenJob>
-  </soapenv:Body>
+            var soap = $@"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
+<soapenv:Body>
+  <rob:OpenJobEx>
+    <rob:job>
+      <rob:id>{jobId}</rob:id>
+      <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
+      <rob:cores>{Config.cores}</rob:cores>
+    </rob:job>
+    <rob:script>
+      <rob:name>{jobId}</rob:name>
+      <rob:script><![CDATA[
+{type}
+      ]]></rob:script>
+{xml}
+    </rob:script>
+  </rob:OpenJobEx>
+</soapenv:Body>
 </soapenv:Envelope>";
 
             using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}/");
@@ -848,10 +856,10 @@ static class Helpers
             req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
             req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
-            req.Headers.Add("SOAPAction", "OpenJob");
+            req.Headers.Add("SOAPAction", "OpenJobEx");
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
-            client.DefaultRequestHeaders.ExpectContinue = false;
+            client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
 
             using var resp = client.SendAsync(req, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult();
             var responseText = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -864,36 +872,14 @@ static class Helpers
 
             if (category == 2)
             {
-                int waited = 0;
-                int timeout = 30000;
-                int delay = 250;
+                var doc = XDocument.Parse(responseText);
+                if (doc.Descendants().Any(e => e.Name.LocalName == "faultstring")) return false;
 
-                while (waited < timeout)
+                var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
+                if (value != null)
                 {
-                    var doc = XDocument.Parse(responseText);
-
-                    if (doc.Descendants().Any(e => e.Name.LocalName == "faultstring"))
-                        return false;
-
-                    var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-
-                    if (value != null)
-                    {
-                        var data = value.Value.Trim();
-
-                        if (!string.IsNullOrEmpty(data) && data.Length > 128 && fuckyourccihopeyoufuckingdieyoupieceofshitIHATEROBLOXOHMYFUCKINGGOD(data))
-                        {
-                            render = data;
-                            return true;
-                        }
-                    }
-
-                    Thread.Sleep(delay);
-                    waited += delay;
+                    fixitup(value.Value.Trim(), out render);
                 }
-
-                Logger.Error("Render timed out");
-                return false;
             }
 
             return true;
@@ -1045,26 +1031,5 @@ static class Helpers
         }
 
         keepPoolsFull();
-    }
-
-    private static bool FixThisShitUpGoddamn(string input, out string fixedup)
-    {
-        fixedup = input.Trim().Replace("\r", "").Replace("\n", "").Replace(" ", "");
-        fixedup = fixedup.Replace('-', '+').Replace('_', '/');
-
-        int mod = fixedup.Length % 4;
-        if (mod == 2) fixedup += "==";
-        else if (mod == 3) fixedup += "=";
-        else if (mod == 1) return false;
-
-        try
-        {
-            Convert.FromBase64String(fixedup);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }
