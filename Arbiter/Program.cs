@@ -124,8 +124,7 @@ public class Program
 
                 await context.Response.WriteAsJsonAsync(new
                 {
-                    error = "Service Unavailable",
-                    message = "Prewarming RCCService"
+                    message = "Service Unavailable"
                 });
 
                 return;

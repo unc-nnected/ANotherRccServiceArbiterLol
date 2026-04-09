@@ -25,9 +25,10 @@ static class Config
     public static bool experimental { get; private set; } = false;
     public static bool removeRCCLogs { get; private set; } = false;
     public static bool Ready { get; set; } = false; // DO NOT CHANGE THIS. THIS WILL BE AUTO SET IF RCCSERVICES ARE READY.
-    public static bool realtime { get; set; } = false;
+    public static bool realtime { get; private set; } = false;
     public static string name = "RCCService";
-    public static bool signing { get; set; } = false;
+    public static bool signing { get; private set; } = false;
+    public static bool inject { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -291,6 +292,10 @@ static class Config
 
                 case "--sign": // enable signing scripts for security
                     signing = true;
+                    break;
+
+                case "--inject": // inject a script after spawning in new gameserver, its for JSON RCCServices because roblox sucks.
+                    inject = true;
                     break;
             }
         }

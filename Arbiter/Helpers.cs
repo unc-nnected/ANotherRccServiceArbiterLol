@@ -154,7 +154,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 5, 0, out tmp, enforceSigning: false); } catch { }
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 5, 0, out tmp, enforceSigning: false); } catch { }
 
         lock (PoolLock)
         {
@@ -687,7 +687,7 @@ static class Helpers
             {
                 string? r;
                 //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
-                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 5, 0, out tmp, enforceSigning: false); } catch { }
+                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 5, 0, out tmp, enforceSigning: false); } catch { }
             }
             catch { }
 
@@ -711,7 +711,7 @@ static class Helpers
         try
         {
             var proc = Process.GetProcessById(pid);
-            if (!proc.ProcessName.Contains("RCCService", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!proc.ProcessName.Contains(Config.name, StringComparison.OrdinalIgnoreCase)) return false;
             proc.Kill(true);
             return true;
         }
@@ -868,10 +868,25 @@ static class Helpers
                     {
                         var data = value.Value.Trim();
 
-                        if (!string.IsNullOrEmpty(data) && data.Length > 32)
+                        if (!string.IsNullOrEmpty(data))
                         {
-                            render = data;
-                            return true;
+                            data = data.Replace("\n", "").Replace("\r", "").Replace(" ", "");
+
+                            int mod4 = data.Length % 4;
+                            if (mod4 > 0)
+                                data += new string('=', 4 - mod4);
+
+                            try
+                            {
+                                var bytes = Convert.FromBase64String(data);
+
+                                if (bytes.Length > 16)
+                                {
+                                    render = data;
+                                    return true;
+                                }
+                            }
+                            catch {}
                         }
                     }
 
