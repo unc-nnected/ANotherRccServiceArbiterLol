@@ -687,7 +687,7 @@ static class Helpers
             {
                 string? r;
                 //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
-                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 5, 0, out tmp, enforceSigning: false); } catch { }
+                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false); } catch { }
             }
             catch { }
 
@@ -736,6 +736,19 @@ static class Helpers
 
         Logger.Error($"Timed out waiting for RCCService on {port}");
         return false;
+    }
+
+    static bool fuckyourccihopeyoufuckingdieyoupieceofshitIHATEROBLOXOHMYFUCKINGGOD(string s)
+    {
+        try
+        {
+            Convert.FromBase64String(s.Trim().Replace("\r", "").Replace("\n", ""));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true)
@@ -863,13 +876,14 @@ static class Helpers
                         return false;
 
                     var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
+
                     if (value != null)
                     {
-                        var data = value.Value;
+                        var data = value.Value.Trim();
 
-                        if (!string.IsNullOrWhiteSpace(data) && FixThisShitUpGoddamn(data, out var fakeahbase64))
+                        if (!string.IsNullOrEmpty(data) && data.Length > 128 && fuckyourccihopeyoufuckingdieyoupieceofshitIHATEROBLOXOHMYFUCKINGGOD(data))
                         {
-                            render = fakeahbase64;
+                            render = data;
                             return true;
                         }
                     }
