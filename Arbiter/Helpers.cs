@@ -124,7 +124,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false);
+            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
         }
         catch {}
 
@@ -154,7 +154,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false); } catch { } // we probably dont need to render if were just starting a gameserver..
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run() return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
@@ -468,7 +468,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 60, 2, out render))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 60, 2, out render, jobtype: "BatchJobEx"))
         {
             Kill(proc);
             return false;
@@ -492,7 +492,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RAScript, 60, 2, out render, false, 53640, headshot, isclothing))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RAScript, 60, 2, out render, false, 53640, headshot, isclothing, jobtype: "BatchJobEx"))
         {
             Kill(proc);
             return false;
@@ -516,7 +516,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RMScript, 60, 2, out render))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RMScript, 60, 2, out render, jobtype: "BatchJobEx"))
         {
             Kill(proc);
             return false;
@@ -540,7 +540,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RMMScript, 60, 2, out render))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RMMScript, 60, 2, out render, jobtype: "BatchJobEx"))
         {
             Kill(proc);
             return false;
@@ -600,7 +600,7 @@ static class Helpers
 
         pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 604800, 1, out render, teamcreate, fakeahport))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 604800, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
             Kill(proc);
 
@@ -630,7 +630,6 @@ static class Helpers
                 Port = fakeahport,
                 ExpiresAt = DateTime.UtcNow.AddSeconds(604800),
                 LastHeartbeat = DateTime.UtcNow,
-                Players = 0,
                 Alive = true
             };
         }
@@ -687,7 +686,7 @@ static class Helpers
             {
                 string? r;
                 //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
-                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false); } catch { }
+                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { }
             }
             catch { }
 
@@ -757,7 +756,7 @@ static class Helpers
         }
     }
 
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true)
+    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
     {
         render = null;
 
@@ -834,7 +833,7 @@ static class Helpers
 
             var soap = $@"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
 <soapenv:Body>
-  <rob:OpenJobEx>
+  <rob:{jobtype}>
     <rob:job>
       <rob:id>{jobId}</rob:id>
       <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
@@ -847,7 +846,7 @@ static class Helpers
       ]]></rob:script>
 {xml}
     </rob:script>
-  </rob:OpenJobEx>
+  </rob:{jobtype}>
 </soapenv:Body>
 </soapenv:Envelope>";
 
@@ -856,7 +855,7 @@ static class Helpers
             req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
             req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
-            req.Headers.Add("SOAPAction", "OpenJobEx");
+            req.Headers.Add("SOAPAction", jobtype);
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
             client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
@@ -879,6 +878,11 @@ static class Helpers
                 if (value != null)
                 {
                     fixitup(value.Value.Trim(), out render);
+                } else
+                {
+                    Logger.Error("Render value wasn't found! ANRSAL doesn't support ASYNC renders yet.");
+                    Logger.Error("RCCService's response: " + responseText);
+                    return false;
                 }
             }
 
@@ -904,21 +908,6 @@ static class Helpers
         lock (JobsLock)
         {
             return Jobs.Values.FirstOrDefault(j => j.Pid == pid);
-        }
-    }
-
-    public static bool UpdatePresence(string jobId, bool joining)
-    {
-        lock (JobsLock)
-        {
-            if (!Jobs.TryGetValue(jobId, out var job))
-                return false;
-
-            job.Players += joining ? 1 : -1;
-            if (job.Players < 0) job.Players = 0;
-
-            job.LastHeartbeat = DateTime.UtcNow;
-            return true;
         }
     }
 
@@ -984,7 +973,6 @@ static class Helpers
                             {
                                 j.JobId,
                                 j.PlaceId,
-                                j.Players,
                                 j.Port,
                                 expiresAt = j.ExpiresAt
                             });

@@ -376,28 +376,6 @@ public class Program
             return Results.Json(jobs);
         }).RequireRateLimiting("strict");
 
-        app.MapPost("/api/v1/presence/join", (HttpRequest req, PresenceBody body) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var ok = Helpers.UpdatePresence(body.jobId, joining: true);
-            return ok ? Results.Ok() : Results.NotFound();
-        }).RequireRateLimiting("unstrict");
-
-        app.MapPost("/api/v1/presence/leave", (HttpRequest req, PresenceBody body) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var ok = Helpers.UpdatePresence(body.jobId, joining: false);
-            return ok ? Results.Ok() : Results.NotFound();
-        }).RequireRateLimiting("unstrict");
-
         app.MapGet("/api/v1/job/{jobId}", (HttpRequest req, string jobId) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
@@ -449,8 +427,6 @@ public record GSMJob
 
     public DateTime ExpiresAt { get; set; }
     public DateTime LastHeartbeat { get; set; }
-
-    public int Players { get; set; }
     public bool Alive { get; set; }
 }
 public record RenewLeaseBody(string jobId, int seconds);
