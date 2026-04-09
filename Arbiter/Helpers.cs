@@ -27,7 +27,7 @@ static class Helpers
         Timeout = Timeout.InfiniteTimeSpan
     };
     private static readonly Dictionary<int, int> usage = new();
-    private const int MaxJobs = 20;
+    private const int MaxJobs = 5; // this is needed for avatars so particles dont break in renders (not showing up at all)
     private static readonly HashSet<int> dedicated = new();
     private const int MaxDedicated = 2;
 
@@ -124,7 +124,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "return game:GetService('RunService'):Run()", 10, 0, out tmp, enforceSigning: false);
+            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false);
         }
         catch {}
 
@@ -154,7 +154,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 5, 0, out tmp, enforceSigning: false); } catch { }
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false); } catch { } // we probably dont need to render if were just starting a gameserver..
 
         lock (PoolLock)
         {
@@ -863,30 +863,14 @@ static class Helpers
                         return false;
 
                     var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-
                     if (value != null)
                     {
-                        var data = value.Value.Trim();
+                        var data = value.Value;
 
-                        if (!string.IsNullOrEmpty(data))
+                        if (!string.IsNullOrWhiteSpace(data) && FixThisShitUpGoddamn(data, out var fakeahbase64))
                         {
-                            data = data.Replace("\n", "").Replace("\r", "").Replace(" ", "");
-
-                            int mod4 = data.Length % 4;
-                            if (mod4 > 0)
-                                data += new string('=', 4 - mod4);
-
-                            try
-                            {
-                                var bytes = Convert.FromBase64String(data);
-
-                                if (bytes.Length > 16)
-                                {
-                                    render = data;
-                                    return true;
-                                }
-                            }
-                            catch {}
+                            render = fakeahbase64;
+                            return true;
                         }
                     }
 
@@ -1047,5 +1031,26 @@ static class Helpers
         }
 
         keepPoolsFull();
+    }
+
+    private static bool FixThisShitUpGoddamn(string input, out string fixedup)
+    {
+        fixedup = input.Trim().Replace("\r", "").Replace("\n", "").Replace(" ", "");
+        fixedup = fixedup.Replace('-', '+').Replace('_', '/');
+
+        int mod = fixedup.Length % 4;
+        if (mod == 2) fixedup += "==";
+        else if (mod == 3) fixedup += "=";
+        else if (mod == 1) return false;
+
+        try
+        {
+            Convert.FromBase64String(fixedup);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
