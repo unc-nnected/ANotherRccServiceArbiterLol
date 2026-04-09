@@ -815,7 +815,7 @@ static class Helpers
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"" xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
   <soapenv:Body>
-    <rob:OpenJobEx>
+    <rob:OpenJob>
       <rob:job>
         <rob:id>{jobId}</rob:id>
         <rob:expirationInSeconds>{howlonguntilwedie}</rob:expirationInSeconds>
@@ -826,7 +826,7 @@ static class Helpers
         <rob:script><![CDATA[{type}]]></rob:script>
       </rob:script>
       {xml}
-    </rob:OpenJobEx>
+    </rob:OpenJob>
   </soapenv:Body>
 </soapenv:Envelope>";
 
@@ -835,7 +835,7 @@ static class Helpers
             req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
             req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
-            req.Headers.Add("SOAPAction", "OpenJobEx");
+            req.Headers.Add("SOAPAction", "OpenJob");
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
             client.DefaultRequestHeaders.ExpectContinue = false;
@@ -851,11 +851,36 @@ static class Helpers
 
             if (category == 2)
             {
-                var doc = XDocument.Parse(responseText);
-                if (doc.Descendants().Any(e => e.Name.LocalName == "faultstring")) return false;
+                int waited = 0;
+                int timeout = 30000;
+                int delay = 250;
 
-                var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
-                if (value != null) render = value.Value.Trim();
+                while (waited < timeout)
+                {
+                    var doc = XDocument.Parse(responseText);
+
+                    if (doc.Descendants().Any(e => e.Name.LocalName == "faultstring"))
+                        return false;
+
+                    var value = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "value");
+
+                    if (value != null)
+                    {
+                        var data = value.Value.Trim();
+
+                        if (!string.IsNullOrEmpty(data) && data.Length > 32)
+                        {
+                            render = data;
+                            return true;
+                        }
+                    }
+
+                    Thread.Sleep(delay);
+                    waited += delay;
+                }
+
+                Logger.Error("Render timed out");
+                return false;
             }
 
             return true;
