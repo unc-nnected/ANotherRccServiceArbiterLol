@@ -288,17 +288,17 @@ static class Helpers
         {
             foreach (var kv in idle)
             {
-                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in pending)
             {
-                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in active)
             {
-                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
 
@@ -426,14 +426,24 @@ static class Helpers
 
     public static int GetPort()
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         while (true)
         {
             using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            try
+            {
+                listener.Start();
+            }
+            catch (SocketException)
+            {
+                Logger.Warn($"Chosen random port {port} is already in use");
+            }
+
             if (port >= 60000 && port <= 64989)
             {
-                listener.Stop();
+                Logger.Info($"Port {port} is chosen for the next RccServiceProcess. Time taken = {sw.ElapsedMilliseconds} ms");
                 return port;
             }
         }
@@ -441,13 +451,16 @@ static class Helpers
 
     public static int GetGameServerPort()
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         while (true)
         {
             using var udp = new UdpClient(0);
             int port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
+
             if (port >= 40000 && port <= 59999)
             {
-                udp.Dispose();
+                Logger.Info($"Port {port} is chosen for the next GameServer. Time taken = {sw.ElapsedMilliseconds} ms");
                 return port;
             }
         }
@@ -639,7 +652,7 @@ static class Helpers
             var psi = new ProcessStartInfo
             {
                 FileName = win ? exe : "wine",
-                Arguments = win ? $"-console -port {port}" : $"\"{exe}\" -console -port {port}",
+                Arguments = win ? $"/Console /content:content\\\\ {port}" : $"\"{exe}\" /Console /content:content\\\\ {port}",
                 WorkingDirectory = Config.RCCDirectory,
                 UseShellExecute = true,
                 CreateNoWindow = false
@@ -746,11 +759,17 @@ static class Helpers
         try
         {
             var proc = Process.GetProcessById(pid);
-            if (!proc.ProcessName.Contains(Config.name, StringComparison.OrdinalIgnoreCase)) return false;
-            proc.Kill(true);
+
+            if (!proc.ProcessName.Contains(Config.name, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            Kill(proc);
             return true;
         }
-        catch { return false; }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool AwaitRCCService(int port, int timeoutMs) // no longer used, maybe find a use for this later?
