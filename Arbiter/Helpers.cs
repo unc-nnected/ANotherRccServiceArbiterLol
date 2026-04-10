@@ -426,24 +426,22 @@ static class Helpers
 
     public static int GetPort()
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-
         while (true)
         {
             using var listener = new TcpListener(IPAddress.Loopback, 0);
-            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
             try
             {
                 listener.Start();
             }
             catch (SocketException)
             {
-                Logger.Warn($"Chosen random port {port} is already in use");
+                Logger.Warn($"Chosen random port {((IPEndPoint)listener.LocalEndpoint).Port} is already in use");
             }
-
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
             if (port >= 60000 && port <= 64989)
             {
-                Logger.Info($"Port {port} is chosen for the next RccServiceProcess. Time taken = {sw.ElapsedMilliseconds} ms");
+                listener.Stop();
+                Logger.Info($"Port {port} is chosen for the next RccServiceProcess.");
                 return port;
             }
         }
@@ -451,16 +449,14 @@ static class Helpers
 
     public static int GetGameServerPort()
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-
         while (true)
         {
             using var udp = new UdpClient(0);
             int port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
-
             if (port >= 40000 && port <= 59999)
             {
-                Logger.Info($"Port {port} is chosen for the next GameServer. Time taken = {sw.ElapsedMilliseconds} ms");
+                udp.Dispose();
+                Logger.Info($"Port {port} is chosen for the next GameServer.");
                 return port;
             }
         }
