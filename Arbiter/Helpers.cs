@@ -105,13 +105,10 @@ static class Helpers
         var alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            try
-            {
-                var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
+            if (AwaitRCCService(port, 20)) {
                 alive = true;
                 break;
             }
-            catch { Thread.Sleep(200); }
         }
 
         if (!alive)
@@ -144,13 +141,10 @@ static class Helpers
         bool alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            try
-            {
-                var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
+            if (!AwaitRCCService(port, 2)) {
                 alive = true;
                 break;
             }
-            catch { Thread.Sleep(250); }
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
@@ -234,13 +228,10 @@ static class Helpers
                 bool alive = false;
                 for (int i = 0; i < 10; i++)
                 {
-                    try
-                    {
-                        client.GetAsync($"http://127.0.0.1:{pport}/").GetAwaiter().GetResult();
+                    if (AwaitRCCService(pport, 20)) {
                         alive = true;
                         break;
                     }
-                    catch { Thread.Sleep(200); }
                 }
 
                 Monitor.Enter(PoolLock);
@@ -674,48 +665,47 @@ static class Helpers
             proc.EnableRaisingEvents = true;
             proc.Exited += (_, __) => RCCServiceExit(proc.Id, port);
 
-            if (Config.realtime)
-            {
-                if (win) proc.PriorityClass = ProcessPriorityClass.RealTime;
-            } else
-            {
-                if (win) proc.PriorityClass = ProcessPriorityClass.High;
-            }
+            if (win)
+                proc.PriorityClass = Config.realtime ? ProcessPriorityClass.RealTime : ProcessPriorityClass.High;
 
             bool ready = false;
-            for (int i = 0; i < 5; i++) {
-                try
-                    {
-                        var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
-                        ready = true;
-                        break;
-                    }
-                    catch {
-                        Thread.Sleep(500);
-                    }
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (AwaitRCCService(port, 20))
+                {
+                    ready = true;
+                    break;
                 }
 
-                if (!ready)
-                {
-                    Logger.Warn($"Failed to connect to port {port}.");
-                }
+                Thread.Sleep(200);
+            }
 
+            if (!ready)
+            {
+                Logger.Warn($"Failed to connect to port {port}.");
+            }
+
+            try
+            {
                 try
                 {
-                    string? r;
-                    //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
-                    try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { }
-                    Logger.Print($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
+                    string? tmp;
+                    SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
                 }
                 catch { }
 
-                return proc;
+                Logger.Print($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
             }
-            catch (Exception ex)
-            {
-                Logger.Error($"Failed to connect to port {port} because RccService process exited with {ex}");
-                return null;
-            }
+            catch { }
+
+            return proc;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to connect to port {port}. This process cannot be used: {ex}");
+            return null;
+        }
     }
 
     private static bool ControlC(Process proc, TimeSpan timeout)
