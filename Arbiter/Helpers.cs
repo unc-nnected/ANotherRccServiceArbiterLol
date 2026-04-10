@@ -288,17 +288,17 @@ static class Helpers
         {
             foreach (var kv in idle)
             {
-                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
                 Kill(kv.Value);
             }
             foreach (var kv in pending)
             {
-                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
                 Kill(kv.Value);
             }
             foreach (var kv in active)
             {
-                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Logger.Info($"Disposing process {kv.Key} with Id {kv.Value.Id}");
                 Kill(kv.Value);
             }
 
@@ -766,7 +766,7 @@ static class Helpers
             }
             catch { }
 
-            Thread.Sleep(250);
+            Thread.Sleep(500);
         }
 
         Logger.Error($"Failed to connect to port {port}. This process cannot be used");
