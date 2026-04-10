@@ -468,7 +468,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 60, 2, out render, jobtype: "BatchJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 60, 2, out render, jobtype: "OpenJobEx")) // we use OpenJobEx because it times out
         {
             Kill(proc);
             return false;
