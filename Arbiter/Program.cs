@@ -49,21 +49,6 @@ public class Program
             Logger.Error(ex.Message);
             Environment.Exit(1);
         }
-
-        if (!Config.SkipSysStats)
-        {
-            // does sysstats trust this system?
-            if (!Helpers.SysStats())
-            {
-                Logger.Error("Start is not a valid member of NetworkServer");
-                return;
-            }
-        }
-        else
-        {
-            // nevermind
-            Logger.Warn("SysStats skipped");
-        }
         
         Logger.Print("Service starting...");
 

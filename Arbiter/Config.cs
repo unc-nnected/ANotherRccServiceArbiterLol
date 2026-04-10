@@ -5,7 +5,6 @@ static class Config
 {
     public static string RCCDirectory { get; private set; } = "";
     public static string BaseURL { get; private set; } = "www.roblox.com";
-    public static bool SkipSysStats { get; private set; } = false;
     public static string GSScript = "print('get a gameserver script nerd')";
     public static string RScript = "print('get a place render script nerd')";
     public static string RAScript = "print('get a avatar render script nerd')";
@@ -197,7 +196,7 @@ static class Config
                     break;
 
                 case "--skip-sysstats": // skip anti skid
-                    SkipSysStats = true;
+                    Logger.Warn("SysStats is deprecated, strip this arg out of the start function");
                     break;
 
                 // this is much better

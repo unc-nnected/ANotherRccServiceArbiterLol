@@ -360,26 +360,6 @@ static class Helpers
             };
         }
     }
-    public static bool SysStats()
-    {
-        try
-        {
-            string exe = Environment.ProcessPath ?? "";
-            if (!exe.Contains("Arbiter", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            if (!IsTCPPortBindable(Config.port))
-                return false;
-
-            var current = Process.GetCurrentProcess();
-            var same = Process.GetProcessesByName(current.ProcessName);
-            if (same.Length > 1)
-                return false;
-
-            return true;
-        }
-        catch { return false; }
-    }
     public static void StartGSM()
     {
         lock (JobsLock)
