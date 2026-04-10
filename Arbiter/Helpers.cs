@@ -124,7 +124,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) Instance.new('Fire', plr.Character.Head) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
         }
         catch {}
 
@@ -154,7 +154,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run() return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJob"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
@@ -217,7 +217,7 @@ static class Helpers
 
                 Monitor.Wait(PoolLock);
 
-                Logger.Warn("All jobs are busy. Spawning new RCCService..");
+                Logger.Warn("All jobs are busy. Spawning new RccService..");
 
                 Monitor.Exit(PoolLock);
 
@@ -288,17 +288,17 @@ static class Helpers
         {
             foreach (var kv in idle)
             {
-                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in pending)
             {
-                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in active)
             {
-                Logger.Info($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
 
@@ -310,13 +310,14 @@ static class Helpers
 
     public static void runPoolManager()
     {
-        new Thread(() =>
+        _ = Task.Run(async () =>
         {
             while (true)
             {
                 keepPoolsFull();
 
                 bool ready;
+                List<int> ports;
 
                 lock (PoolLock)
                 {
@@ -324,20 +325,24 @@ static class Helpers
 
                     if (total < TargetPool || pending.Count > 0)
                     {
-                        ready = false;
-                    }
-                    else
-                    {
-                        ready = active.Keys.Concat(idle.Keys).All(port => AwaitRCCService(port, 5000));
+                        Config.Ready = false;
+                        goto Sleep;
                     }
 
+                    ports = active.Keys.Concat(idle.Keys).ToList();
+                }
+
+                ready = ports.All(port => AwaitRCCService(port, 5000));
+
+                lock (PoolLock)
+                {
                     Config.Ready = ready;
                 }
 
-                Thread.Sleep(2000);
+            Sleep:
+                await Task.Delay(2000);
             }
-        })
-        { IsBackground = true }.Start();
+        });
     }
 
     public class LuaValue
@@ -442,7 +447,7 @@ static class Helpers
             {
                 listener.Stop();
                 if (Config.debug)
-                    Logger.Info($"Port {port} is chosen for the next RccServiceProcess.");
+                    Logger.Print($"Port {port} is chosen for the next RccServiceProcess.");
                 return port;
             }
         }
@@ -458,7 +463,7 @@ static class Helpers
             {
                 udp.Dispose();
                 if (Config.debug)
-                    Logger.Info($"Port {port} is chosen for the next GameServer.");
+                    Logger.Print($"Port {port} is chosen for the next GameServer.");
                 return port;
             }
         }
@@ -700,7 +705,7 @@ static class Helpers
                     string? r;
                     //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
                     try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { }
-                    Logger.Info($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
+                    Logger.Print($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
                 }
                 catch { }
 
@@ -777,7 +782,7 @@ static class Helpers
         }
     }
 
-    private static bool AwaitRCCService(int port, int timeoutMs) // no longer used, maybe find a use for this later?
+    private static bool AwaitRCCService(int port, int timeoutMs)
     {
         var sw = Stopwatch.StartNew();
 
@@ -785,15 +790,17 @@ static class Helpers
         {
             try
             {
-                var resp = client.GetAsync($"http://127.0.0.1:{port}").Result;
-                if (resp.Content.Headers.ContentType?.MediaType == "text/xml") return true;
+                var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
+                if (resp.Content.Headers.ContentType?.MediaType == "text/xml")
+                    return true;
             }
-            catch { }
+            catch
+            {
+            }
 
-            Thread.Sleep(500);
+            Thread.Sleep(200);
         }
 
-        Logger.Error($"Failed to connect to port {port}. This process cannot be used");
         return false;
     }
 
@@ -845,7 +852,7 @@ static class Helpers
             else
             {
                 if (Config.debug)
-                    Logger.Info("Signature is valid");
+                    Logger.Print("Signature is valid");
             }
 
             type = scriptContent;
@@ -925,7 +932,7 @@ static class Helpers
 
             if (!resp.IsSuccessStatusCode)
             {
-                Logger.Error("RCCService returned error:\n" + responseText);
+                Logger.Error("An unexpected error was occurred in RccService:\n" + responseText);
                 return false;
             }
 
@@ -941,7 +948,7 @@ static class Helpers
                 } else
                 {
                     Logger.Error("Render value wasn't found! ANRSAL doesn't support ASYNC renders yet.");
-                    Logger.Error("RCCService's response: " + responseText);
+                    Logger.Error("RccService's response: " + responseText);
                     return false;
                 }
             }
