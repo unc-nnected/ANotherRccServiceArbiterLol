@@ -203,7 +203,7 @@ public class Program
                 {
                     status = "stressed",
                     ram = MathF.Round(ram, 1)
-                }, statusCode: 503);
+                });
             }
 
             return Results.Ok(new
