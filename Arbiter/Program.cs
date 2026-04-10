@@ -232,7 +232,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Info($"New client {clientIP} creating avatar render with user {body.UserId} with port {port}");
+            Logger.Info($"New client {clientIP} creating avatar render with userId {body.UserId} with port {port}");
 
             if (!Helpers.ARender(jobId, body.UserId, out render, body.IsHeadshot, body.IsClothing))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -265,7 +265,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Info($"New client {clientIP} creating place render with place {body.PlaceId} with port {port}");
+            Logger.Info($"New client {clientIP} creating place render with placeId {body.PlaceId} with port {port}");
 
             if (!Helpers.Render(jobId, body.PlaceId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -298,7 +298,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Info($"New client {clientIP} creating model render with place {body.AssetId} with port {port}");
+            Logger.Info($"New client {clientIP} creating model render with assetId {body.AssetId} with port {port}");
 
             if (!Helpers.MRender(jobId, body.AssetId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -331,7 +331,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Info($"New client {clientIP} creating model render with place {body.MeshId} with port {port}");
+            Logger.Info($"New client {clientIP} creating model render with MeshId {body.MeshId} with port {port}");
 
             if (!Helpers.MMRender(jobId, body.MeshId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
