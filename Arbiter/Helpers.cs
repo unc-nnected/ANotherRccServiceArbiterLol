@@ -391,7 +391,7 @@ static class Helpers
         { IsBackground = true }.Start();
     }
 
-    private static bool IsTCPPortBindable(int port)
+    public static bool IsTCPPortBindable(int port)
     {
         try
         {

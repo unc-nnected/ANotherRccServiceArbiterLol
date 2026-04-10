@@ -42,6 +42,10 @@ public class Program
                 Logger.Info($"Loaded {Config.BaseURL.Length} bytes from BaseURL");
                 Logger.Info("Config read");
             }
+            if (Helpers.IsTCPPortBindable(Config.port))
+            {
+                throw new Exception($"{Config.port} is not bindable, it must be TCP!");
+            }
         }
         catch (Exception ex)
         {
