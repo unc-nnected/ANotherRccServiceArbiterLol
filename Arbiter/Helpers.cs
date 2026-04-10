@@ -441,7 +441,8 @@ static class Helpers
             if (port >= 60000 && port <= 64989)
             {
                 listener.Stop();
-                Logger.Info($"Port {port} is chosen for the next RccServiceProcess.");
+                if (Config.debug)
+                    Logger.Info($"Port {port} is chosen for the next RccServiceProcess.");
                 return port;
             }
         }
@@ -456,7 +457,8 @@ static class Helpers
             if (port >= 40000 && port <= 59999)
             {
                 udp.Dispose();
-                Logger.Info($"Port {port} is chosen for the next GameServer.");
+                if (Config.debug)
+                    Logger.Info($"Port {port} is chosen for the next GameServer.");
                 return port;
             }
         }
@@ -593,7 +595,14 @@ static class Helpers
             }
             else
             {
-                (proc, SOAPPort) = startDedicatedRCCService();
+                if (Config.poolgs)
+                {
+                    (proc, SOAPPort) = startDedicatedRCCService();
+                }
+                else
+                {
+                    (proc, SOAPPort, panic) = getRCCService();
+                }
             }
         }
 

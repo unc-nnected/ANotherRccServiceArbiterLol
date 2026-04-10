@@ -29,6 +29,7 @@ static class Config
     public static bool signing { get; private set; } = false;
     public static bool inject { get; private set; } = false;
     public static bool autistic { get; private set; } = false;
+    public static bool poolgs { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -300,6 +301,10 @@ static class Config
 
                 case "--autisticrcc": // FUCK YOU RCCSERVICE I HATE YOU
                     autistic = true;
+                    break;
+
+                case "--poolforgameservers": // use pooled rccservices for gameservers
+                    poolgs = true;
                     break;
             }
         }
