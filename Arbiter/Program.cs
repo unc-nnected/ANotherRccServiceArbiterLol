@@ -14,6 +14,8 @@ And sing along to the age of paranoia
 
 */
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 
@@ -27,7 +29,9 @@ public class Program
             // parse config
             Config.Parse(args);
             Logger.Print($"Access key read: {Config.FakeSECRET}");
-            Logger.Print($"Current Access key: {Config.SECRET}");
+            using var sha = SHA256.Create();
+            var SECREThash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(Config.SECRET)));
+            Logger.Print($"Current Access key: {SECREThash}");
             if (Config.debug)
             {
                 Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
@@ -113,6 +117,9 @@ public class Program
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         });
 
+        builder.Logging.ClearProviders();
+        builder.Logging.SetMinimumLevel(LogLevel.Warning);
+
         var app = builder.Build();
 
         app.Use(async (context, next) =>
@@ -157,7 +164,7 @@ public class Program
             // get client's ip for logging
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received a gameserver request from {clientIP}, creating gameserver job={jobId} place={body.PlaceId} port={port}");
+            Logger.Info($"New client {clientIP} creating gameserver with place {body.PlaceId} with jobId {jobId} and port {port}");
 
             // start the gameserver!
             int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out render, body.TeamCreate, out int _, out pid);
@@ -184,7 +191,7 @@ public class Program
                 Helpers.RemoveJob(job.JobId);
 
                 if (Config.debug)
-                    Logger.Warn($"Killed {job.JobId} (pid={req.pid}, port={job.Port})");
+                    Logger.Info($"Killed {job.JobId} (pid={req.pid}, port={job.Port})");
             }
 
             return Results.Ok(new
@@ -236,7 +243,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received an avatar render request from {clientIP}, job={jobId} port={port}");
+            Logger.Info($"New client {clientIP} creating avatar render with user {body.UserId} with jobId {jobId} and port {port}");
 
             if (!Helpers.ARender(jobId, body.UserId, out render, body.IsHeadshot, body.IsClothing))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -269,7 +276,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received an place render request from {clientIP}, job={jobId} port={port}");
+            Logger.Info($"New client {clientIP} creating place render with place {body.PlaceId} with jobId {jobId} and port {port}");
 
             if (!Helpers.Render(jobId, body.PlaceId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -302,7 +309,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received a model render request from {clientIP}, job={jobId} port={port}");
+            Logger.Info($"New client {clientIP} creating model render with place {body.AssetId} with jobId {jobId} and port {port}");
 
             if (!Helpers.MRender(jobId, body.AssetId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -335,7 +342,7 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Warn($"Received a mesh render request from {clientIP}, job={jobId} port={port}");
+            Logger.Info($"New client {clientIP} creating model render with place {body.MeshId} with jobId {jobId} and port {port}");
 
             if (!Helpers.MMRender(jobId, body.MeshId, out render))
                 return Results.Problem("RCCService couldn't execute OpenJob");
@@ -392,6 +399,7 @@ public class Program
         }).RequireRateLimiting("strict"); // dont care honestly
 
         Logger.Print("Intializing ASP.NET Web Service");
+        Helpers.StartGSM();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStarted.Register(() =>
         {
@@ -399,10 +407,9 @@ public class Program
         });
         lifetime.ApplicationStopping.Register(() =>
         {
-            Logger.Print("Stopping service...");
+            Logger.Print("Service shutting down...");
+            Helpers.killallthefags();
         });
-        Logger.Print("Intializing Game Monitor Service");
-        Helpers.StartGSM();
 
         Logger.Print("Intializing RCCService Pool");
         Helpers.runPoolManager();

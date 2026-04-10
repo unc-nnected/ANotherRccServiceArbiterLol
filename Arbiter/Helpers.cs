@@ -116,7 +116,7 @@ static class Helpers
 
         if (!alive)
         {
-            if (Config.debug) Logger.Warn($"RCCService on port {port} isn't active, killing {proc.Id}");
+            if (Config.debug) Logger.Warn($"Failed to connect to port {port}. This process cannot be used");
             try { if (!proc.HasExited) proc.Kill(true); } catch { }
             return null;
         }
@@ -468,7 +468,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 60, 2, out render, jobtype: "OpenJobEx")) // we use OpenJobEx because it times out
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 120, 2, out render, jobtype: "OpenJobEx")) // we use OpenJobEx because it times out
         {
             Kill(proc);
             return false;
@@ -573,7 +573,7 @@ static class Helpers
 
             if (dedicatedCount >= MaxDedicated)
             {
-                Logger.Warn($"{dedicatedCount} dedicated servers active and will likely burn out the machine, using pooled RCCServices");
+                Logger.Warn($"{dedicatedCount} dedicated RccService processes are active, using Pooled now");
 
                 var kv = idle.FirstOrDefault();
 
@@ -649,7 +649,7 @@ static class Helpers
                 FileName = win ? exe : "wine",
                 Arguments = win ? $"-console -port {port}" : $"\"{exe}\" -console -port {port}",
                 WorkingDirectory = Config.RCCDirectory,
-                UseShellExecute = false,
+                UseShellExecute = true,
                 CreateNoWindow = false
             };
 
@@ -667,42 +667,49 @@ static class Helpers
                 if (win) proc.PriorityClass = ProcessPriorityClass.High;
             }
 
-                bool ready = false;
-            for (int i = 0; i < 5; i++)
-            {
+            bool ready = false;
+            for (int i = 0; i < 5; i++) {
+                try
+                    {
+                        var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
+                        ready = true;
+                        break;
+                    }
+                    catch {
+                        Thread.Sleep(500);
+                    }
+                }
+
+                if (!ready)
+                {
+                    Logger.Warn($"Failed to connect to port {port}.");
+                }
+
                 try
                 {
-                    var resp = client.GetAsync($"http://127.0.0.1:{port}/").GetAwaiter().GetResult();
-                    ready = true;
-                    break;
+                    string? r;
+                    //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
+                    try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { }
+                    Logger.Info($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
                 }
-                catch { Thread.Sleep(500); }
+                catch { }
+
+                return proc;
             }
-
-            if (!ready)
-                Logger.Warn($"RCCService on port {port} didn't respond in time");
-
-            try
+            catch (Exception ex)
             {
-                string? r;
-                //SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out r);
-                try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { }
+                Logger.Error($"Failed to connect to port {port} because RccService process exited with {ex}");
+                return null;
             }
-            catch { }
-
-            return proc;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error("RCCService couldn't start: " + ex.Message);
-            return null;
-        }
     }
 
     private static void Kill(Process proc)
     {
+
         try { if (!proc.HasExited) proc.Kill(true); }
-        catch { }
+        catch (Exception ex) {
+            Logger.Error($"Error disposing process running on port {proc}: {ex}");
+        }
     }
 
     public static bool KillbyID(int pid)
@@ -733,7 +740,7 @@ static class Helpers
             Thread.Sleep(250);
         }
 
-        Logger.Error($"Timed out waiting for RCCService on {port}");
+        Logger.Error($"Failed to connect to port {port}. This process cannot be used");
         return false;
     }
 
@@ -785,7 +792,7 @@ static class Helpers
             else
             {
                 if (Config.debug)
-                    Logger.Print("Signature is valid");
+                    Logger.Info("Signature is valid");
             }
 
             type = scriptContent;

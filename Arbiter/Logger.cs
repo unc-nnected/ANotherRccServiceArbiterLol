@@ -19,7 +19,7 @@ static class Logger
 
     public static void Print(string msg)
     {
-        Write(ConsoleColor.White, msg); 
+        Write(ConsoleColor.Gray, msg); 
     }
 
 	private static void Write(ConsoleColor color, string msg)
