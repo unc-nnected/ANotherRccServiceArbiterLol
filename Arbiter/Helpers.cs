@@ -286,9 +286,21 @@ static class Helpers
     {
         lock (PoolLock)
         {
-            foreach (var kv in idle) Kill(kv.Value);
-            foreach (var kv in pending) Kill(kv.Value);
-            foreach (var kv in active) Kill(kv.Value);
+            foreach (var kv in idle)
+            {
+                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Kill(kv.Value);
+            }
+            foreach (var kv in pending)
+            {
+                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Kill(kv.Value);
+            }
+            foreach (var kv in active)
+            {
+                Logger.Info($"Disposing process with Id {kv.Value.Id}");
+                Kill(kv.Value);
+            }
 
             idle.Clear();
             pending.Clear();
@@ -683,12 +695,49 @@ static class Helpers
             }
     }
 
+    private static bool ControlC(Process proc, TimeSpan timeout)
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        if (proc.HasExited)
+            return true;
+
+        if (!AttachConsole((uint)proc.Id))
+            return false;
+
+        try
+        {
+            SetConsoleCtrlHandler(null, true);
+
+            if (!GenerateConsoleCtrlEvent(CtrlCEvent, 0))
+                return false;
+
+            return proc.WaitForExit((int)timeout.TotalMilliseconds);
+        }
+        finally
+        {
+            SetConsoleCtrlHandler(null, false);
+            FreeConsole();
+        }
+    }
+
     private static void Kill(Process proc)
     {
 
-        try { if (!proc.HasExited) proc.Kill(true); }
-        catch (Exception ex) {
-            Logger.Error($"Error disposing process running on port {proc}: {ex}");
+        try
+        {
+            if (proc == null || proc.HasExited)
+                return;
+
+            if (ControlC(proc, TimeSpan.FromSeconds(5)))
+                return;
+
+            proc.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error disposing process {proc.Id}: {ex}");
         }
     }
 
@@ -1007,4 +1056,20 @@ static class Helpers
 
         keepPoolsFull();
     }
+
+    private const uint CtrlCEvent = 0;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AttachConsole(uint dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool FreeConsole();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GenerateConsoleCtrlEvent(uint dwCtrlEvent, uint dwProcessGroupId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate? handler, bool add);
+
+    private delegate bool ConsoleCtrlDelegate(uint ctrlType);
 }
