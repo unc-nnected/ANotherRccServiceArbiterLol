@@ -606,7 +606,7 @@ static class Helpers
 
         pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 604800, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 30, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
             Kill(proc);
 
