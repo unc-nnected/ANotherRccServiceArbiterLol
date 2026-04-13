@@ -996,8 +996,7 @@ static class Helpers
         {
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/""
-                  xmlns:rob=""http://{Config.BaseURL}/"">
+<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
   <soapenv:Body>
     <rob:RenewLease>
       <rob:jobID>{jobId}</rob:jobID>
