@@ -356,6 +356,10 @@ public class Program
             if (string.IsNullOrWhiteSpace(body.jobId) || body.seconds <= 0)
                 return Results.Json(new { error = "badrequest" }, statusCode: 400);
 
+            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            Logger.Info($"New client {clientIP} renew leasing {body.jobId} with {body.seconds} seconds");
+
             var ok = Helpers.RenewLease(body.jobId, body.seconds);
             return ok ? Results.Ok() : Results.NotFound();
         }).RequireRateLimiting("unstrict");
