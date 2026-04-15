@@ -121,7 +121,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "local plr=game:GetService('Players'):CreateLocalPlayer(0) plr:LoadCharacter(false) Instance.new('Fire', plr.Character.Head) return game:GetService('ThumbnailGenerator'):Click('PNG', 420, 420, true)", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+            SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
         }
         catch {}
 
@@ -606,7 +606,7 @@ static class Helpers
 
         pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 30, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 60, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
             Kill(proc);
 
