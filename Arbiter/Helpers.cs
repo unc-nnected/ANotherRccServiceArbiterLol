@@ -656,7 +656,8 @@ static class Helpers
                 Arguments = win ? $"/Console /content:content\\\\ {port}" : $"\"{exe}\" /Console /content:content\\\\ {port}",
                 WorkingDirectory = Config.RCCDirectory,
                 UseShellExecute = true,
-                CreateNoWindow = false
+                CreateNoWindow = false,
+                WindowStyle = ProcessWindowStyle.Minimized
             };
 
             var proc = Process.Start(psi);
