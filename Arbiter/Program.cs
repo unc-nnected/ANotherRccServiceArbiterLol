@@ -66,7 +66,7 @@ public class Program
             Logger.Error(ex.ToString());
             throw; //Environment.Exit(1);
         }
-        
+
         Logger.Print("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
@@ -404,6 +404,10 @@ public class Program
             return Results.Json(job);
         }).RequireRateLimiting("strict"); // dont care honestly
 
+        Logger.Print("Intializing RCCService Pool");
+        Helpers.runPoolManager();
+        while (!Config.Ready)
+            Thread.Sleep(100);
         Logger.Print("Intializing ASP.NET Web Service");
         Helpers.StartGSM();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
@@ -416,10 +420,6 @@ public class Program
             Logger.Print("Service shutting down...");
             Helpers.killallthefags();
         });
-
-        Logger.Print("Intializing RCCService Pool");
-        Helpers.runPoolManager();
-        Thread.Sleep(3000);
         app.Run($"http://0.0.0.0:{Config.port}");
     }
 }
