@@ -322,28 +322,5 @@ static class Config
             // I GUESS WE'LL JUST SET OUR OWN
             RCCDirectory = AppContext.BaseDirectory;
         }
-
-        if (service)
-        {
-            try
-            {
-                Host.CreateDefaultBuilder(args)
-                .UseWindowsService(options =>
-                    {
-                        options.ServiceName = "ANRSAL";
-                    })
-                .ConfigureServices(services =>
-                    {
-                        services.AddHostedService<Worker>();
-                    })
-                .Build()
-                .Run();
-                Logger.Info("Installed ANRSAL as Windows Service");
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Couldn't install ANRSAL as Windows Service: " + ex);
-            }
-        }
     }
 }

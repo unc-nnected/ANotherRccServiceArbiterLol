@@ -13,6 +13,7 @@ Now everybody, do the propaganda
 And sing along to the age of paranoia
 
 */
+using Microsoft.Extensions.Options;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -46,12 +47,28 @@ public class Program
             {
                 throw new Exception($"{Config.port} is not bindable, it must be TCP!");
             }
+            if (Config.service)
+            {
+                Host.CreateDefaultBuilder(args)
+                .UseWindowsService(options =>
+                {
+                    options.ServiceName = "ANRSAL";
+                })
+                .ConfigureServices(services =>
+                {
+                    services.AddHostedService<Worker>();
+                })
+                .Build()
+                .Run();
+                Logger.Info("Installed ANRSAL as Windows Service");
+                return;
+            }
         }
         catch (Exception ex)
         {
             // what the fuck happend
-            Logger.Error(ex.Message);
-            Environment.Exit(1);
+            Logger.Error(ex.ToString());
+            throw; //Environment.Exit(1);
         }
         
         Logger.Print("Service starting...");
