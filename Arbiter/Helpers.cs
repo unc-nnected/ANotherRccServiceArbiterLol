@@ -633,8 +633,8 @@ static class Helpers
                 JobId = jobId,
                 PlaceId = placeId,
                 Pid = pid,
-                Port = fakeahport,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(604800),
+                Port = SOAPPort, // oh my god bruh
+                ExpiresAt = DateTime.UtcNow.AddSeconds(60),
                 LastHeartbeat = DateTime.UtcNow,
                 Alive = true
             };
