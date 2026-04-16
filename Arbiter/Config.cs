@@ -1,10 +1,12 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Hosting;
 
 static class Config
 {
     public static string RCCDirectory { get; private set; } = "";
-    public static string BaseURL { get; private set; } = "www.roblox.com";
+    public static string BaseURL { get; private set; } = "roblox.com";
     public static string GSScript = "print('get a gameserver script nerd')";
     public static string RScript = "print('get a place render script nerd')";
     public static string RAScript = "print('get a avatar render script nerd')";
@@ -30,6 +32,7 @@ static class Config
     public static bool inject { get; private set; } = false;
     public static bool autistic { get; private set; } = false;
     public static bool poolgs { get; private set; } = false;
+    public static bool service { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -196,10 +199,6 @@ static class Config
                     RCCDirectory = args[++i];
                     break;
 
-                case "--skip-sysstats": // skip anti skid
-                    Logger.Warn("SysStats is deprecated, strip this arg out of the start function");
-                    break;
-
                 // this is much better
                 case "--gscript":
                 case "--rscript":
@@ -306,6 +305,10 @@ static class Config
                 case "--poolforgameservers": // use pooled rccservices for gameservers
                     poolgs = true;
                     break;
+
+                case "--service":
+                    service = true;
+                    break;
             }
         }
 
@@ -313,6 +316,29 @@ static class Config
         {
             // I GUESS WE'LL JUST SET OUR OWN
             RCCDirectory = AppContext.BaseDirectory;
+        }
+
+        if (service)
+        {
+            try
+            {
+                Host.CreateDefaultBuilder(args)
+                .UseWindowsService(options =>
+                    {
+                        options.ServiceName = "ANRSAL";
+                    })
+                .ConfigureServices(services =>
+                    {
+                        services.AddHostedService<Worker>();
+                    })
+                .Build()
+                .Run();
+                Logger.Info("Installed ANRSAL as Windows Service");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Couldn't install ANRSAL as Windows Service: " + ex);
+            }
         }
     }
 }
