@@ -57,11 +57,7 @@ public class Program
                 .ConfigureServices(services =>
                 {
                     services.AddHostedService<Worker>();
-                })
-                .Build()
-                .Run();
-                Logger.Info("Installed ANRSAL as Windows Service");
-                return;
+                });
             }
         }
         catch (Exception ex)
