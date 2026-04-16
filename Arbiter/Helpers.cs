@@ -605,8 +605,11 @@ static class Helpers
         if (proc == null) return 0;
 
         pid = proc.Id;
+        int fakeahtimeout = 30;
+        if (Config.legacy)
+            fakeahtimeout = 1234567890;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, 60, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
             Kill(proc);
 

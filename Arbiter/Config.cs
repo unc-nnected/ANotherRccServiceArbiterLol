@@ -33,6 +33,7 @@ static class Config
     public static bool autistic { get; private set; } = false;
     public static bool poolgs { get; private set; } = false;
     public static bool service { get; private set; } = false;
+    public static bool legacy { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -308,6 +309,10 @@ static class Config
 
                 case "--service":
                     service = true;
+                    break;
+
+                case "--legacy": // use legacy stuff
+                    legacy = true;
                     break;
             }
         }
