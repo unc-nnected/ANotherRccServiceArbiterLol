@@ -995,6 +995,8 @@ static class Helpers
     {
         try
         {
+            ServicePointManager.Expect100Continue = Config.autistic;
+            ServicePointManager.UseNagleAlgorithm = false;
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
@@ -1006,9 +1008,15 @@ static class Helpers
   </soapenv:Body>
 </soapenv:Envelope>";
 
-            using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}");
-            req.Content = new StringContent(soap, Encoding.UTF8, "text/xml");
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}/");
+            req.Version = HttpVersion.Version11;
+            req.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
+            req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
+            req.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             req.Headers.Add("SOAPAction", "RenewLease");
+            req.Headers.Host = $"127.0.0.1:{port}";
+            req.Headers.ConnectionClose = true;
+            client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
 
             using var resp = client.Send(req);
             return resp.IsSuccessStatusCode;
