@@ -2,6 +2,7 @@
 i haven't even bothered to comment in this code because if you understand it enough to read it, you understand it enough to not need comments. also if you don't understand it, comments won't help you.
 */
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
@@ -605,9 +606,12 @@ static class Helpers
         if (proc == null) return 0;
 
         pid = proc.Id;
-        int fakeahtimeout = 30;
-        if (Config.legacy)
+        int fakeahtimeout;
+        if (Config.legacy) {
             fakeahtimeout = 1234567890;
+        } else {
+            fakeahtimeout = 30;
+        }
 
         if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
