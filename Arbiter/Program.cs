@@ -185,8 +185,6 @@ public class Program
 
             var job = Helpers.GetJobByPID(req.pid);
 
-            Logger.Warn("Nah thats sus");
-
             if (!Helpers.KillbyID(req.pid))
                 return Results.NotFound(new { error = "notfound" });
 
