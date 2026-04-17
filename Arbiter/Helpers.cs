@@ -106,7 +106,7 @@ static class Helpers
         var alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            if (AwaitRCCService(port, 20)) {
+            if (AwaitRCCService(port, 5000)) {
                 alive = true;
                 break;
             }
@@ -142,7 +142,7 @@ static class Helpers
         bool alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            if (!AwaitRCCService(port, 2)) {
+            if (!AwaitRCCService(port, 5000)) {
                 alive = true;
                 break;
             }
@@ -175,7 +175,7 @@ static class Helpers
                     var proc = kv.Value;
                     idle.Remove(port);
 
-                    if (!AwaitRCCService(port, 2))
+                    if (!AwaitRCCService(port, 5000))
                     {
                         Kill(proc);
                         usage.Remove(port);
@@ -229,7 +229,7 @@ static class Helpers
                 bool alive = false;
                 for (int i = 0; i < 10; i++)
                 {
-                    if (AwaitRCCService(pport, 20)) {
+                    if (AwaitRCCService(pport, 5000)) {
                         alive = true;
                         break;
                     }
@@ -606,19 +606,14 @@ static class Helpers
         if (proc == null) return 0;
 
         pid = proc.Id;
-        int fakeahtimeout;
-        if (Config.legacy) {
-            fakeahtimeout = 604800;
-        } else {
-            fakeahtimeout = 30;
-        }
+        int fakeahtimeout = Config.legacy ? 604800 : 30;
         if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
-            Kill(proc);
-
             lock (PoolLock)
             {
                 dedicated.Remove(SOAPPort);
+                active.Remove(SOAPPort);
+                idle.Remove(SOAPPort);
             }
 
             if (panic)
@@ -641,7 +636,7 @@ static class Helpers
                 Pid = pid,
                 Port = fakeahport, // oh my god bruh
                 SOAP = SOAPPort,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(60),
+                ExpiresAt = DateTime.UtcNow.AddSeconds(fakeahtimeout),
                 LastHeartbeat = DateTime.UtcNow,
                 Alive = true
             };
@@ -680,7 +675,7 @@ static class Helpers
 
             for (int i = 0; i < 5; i++)
             {
-                if (AwaitRCCService(port, 20))
+                if (AwaitRCCService(port, 5000))
                 {
                     ready = true;
                     break;

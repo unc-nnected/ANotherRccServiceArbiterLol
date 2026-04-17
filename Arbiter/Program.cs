@@ -14,6 +14,7 @@ And sing along to the age of paranoia
 
 */
 using Microsoft.Extensions.Options;
+using System.ComponentModel;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -183,6 +184,8 @@ public class Program
                 return Results.Json(new { error = "unauthorized" }, statusCode: 401);
 
             var job = Helpers.GetJobByPID(req.pid);
+
+            Logger.Warn("Nah thats sus");
 
             if (!Helpers.KillbyID(req.pid))
                 return Results.NotFound(new { error = "notfound" });
