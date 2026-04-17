@@ -608,11 +608,10 @@ static class Helpers
         pid = proc.Id;
         int fakeahtimeout;
         if (Config.legacy) {
-            fakeahtimeout = 1234567890;
+            fakeahtimeout = 604800;
         } else {
             fakeahtimeout = 30;
         }
-
         if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
         {
             Kill(proc);
@@ -640,7 +639,8 @@ static class Helpers
                 JobId = jobId,
                 PlaceId = placeId,
                 Pid = pid,
-                Port = SOAPPort, // oh my god bruh
+                Port = fakeahport, // oh my god bruh
+                SOAP = SOAPPort,
                 ExpiresAt = DateTime.UtcNow.AddSeconds(60),
                 LastHeartbeat = DateTime.UtcNow,
                 Alive = true
@@ -985,7 +985,7 @@ static class Helpers
                 return false;
         }
 
-        if (!SOAPRenewLease(job.Port, job.JobId, seconds))
+        if (!SOAPRenewLease(job.SOAP, job.JobId, seconds))
             return false;
 
         lock (JobsLock)

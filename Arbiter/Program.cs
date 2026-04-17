@@ -423,24 +423,3 @@ public class Program
         app.Run($"http://0.0.0.0:{Config.port}");
     }
 }
-
-// bunch of post data shit!
-public record RenderRequest(int PlaceId);
-public record ARenderRequest(int UserId, bool IsHeadshot, bool IsClothing);
-public record MRenderRequest(int AssetId);
-public record MMRenderRequest(int MeshId);
-public record GameserverRequest(int PlaceId, bool TeamCreate);
-public record KillRequest(int pid);
-public record GSMJob
-{
-    public string JobId { get; init; } = "";
-    public int Port { get; init; }
-    public int PlaceId { get; init; }
-    public int Pid { get; set; }
-
-    public DateTime ExpiresAt { get; set; }
-    public DateTime LastHeartbeat { get; set; }
-    public bool Alive { get; set; }
-}
-public record RenewLeaseBody(string jobId, int seconds);
-public record PresenceBody(string jobId);
