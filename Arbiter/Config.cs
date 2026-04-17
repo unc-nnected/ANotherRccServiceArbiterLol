@@ -252,7 +252,12 @@ static class Config
                     cores = int.Parse(args[++i]); // why are we parsing for this
                     break;
 
+                case "--verbose": // verbose
+                    debug = true;
+                    break;
+
                 case "--debug": // debug mode (more information)
+                    Logger.Warn("--debug is deprecated, use --verbose");
                     debug = true;
                     break;
 

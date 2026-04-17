@@ -372,7 +372,8 @@ public class Program
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            Logger.Info($"New client {clientIP} renew leasing {body.jobId} with {body.seconds} seconds");
+            if (Config.debug)
+                Logger.Info($"New client {clientIP} renew leasing {body.jobId} with {body.seconds} seconds");
 
             var ok = Helpers.RenewLease(body.jobId, body.seconds);
             return ok ? Results.Ok() : Results.NotFound();
