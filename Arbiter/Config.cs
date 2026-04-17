@@ -345,4 +345,3 @@ public record GSMJob
     public bool Alive { get; set; }
 }
 public record RenewLeaseBody(string jobId, int seconds);
-public record PresenceBody(string jobId);
