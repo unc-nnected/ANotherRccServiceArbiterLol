@@ -127,7 +127,7 @@ public class Program
 
         app.Use(async (context, next) =>
         {
-            if (!Config.Ready && !context.Request.Path.StartsWithSegments("/api/v1/health"))
+            if (!Config.Ready && !context.Request.Path.StartsWithSegments("/GetStats"))
             {
                 context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
                 context.Response.Headers["Retry-After"] = "30";
@@ -207,24 +207,32 @@ public class Program
 
         app.MapGet("/api/v1/health", () =>
         {
-            // we get ram
-            if (!Health.IsHealthy(out var ram))
-            {
-                // uh oh, ram is overloaded
-                Logger.Warn($"Health is degrading, ram={ram:F1}%");
+            Logger.Warn("/api/v1/health is deprecated, use /GetStats instead");
 
-                return Results.Json(new
-                {
-                    status = "stressed",
-                    ram = MathF.Round(ram, 1)
-                });
-            }
+            return Results.NoContent();
+        }).RequireRateLimiting("unstrict");
 
-            return Results.Ok(new
+        app.MapGet("/GetStats", () =>
+        {
+            var healthy = Health.IsHealthy(out var ram);
+
+            var response = new
             {
-                status = "alive",
-                ram = MathF.Round(ram, 1)
-            });
+                status = healthy ? "normal" : "stressed",
+                ram = MathF.Round(ram, 1),
+                availablePhysicalMemoryGigabytes = MathF.Round(Health.AvailablePhysicalMemoryGigabytes, 2),
+                totalPhysicalMemoryGigabytes = MathF.Round(Health.TotalPhysicalMemoryGigabytes, 2),
+                cpuUsage = MathF.Round(Health.CpuUsage, 2),
+                downloadSpeedKilobytesPerSecond = MathF.Round(Health.DownloadSpeedKilobytesPerSecond, 2),
+                uploadSpeedKilobytesPerSecond = MathF.Round(Health.UploadSpeedKilobytesPerSecond, 2),
+                logicalProcessorCount = Health.LogicalProcessorCount,
+                processorCount = Health.ProcessorCount,
+                rccServiceProcesses = Health.RccServiceProcesses,
+                rccVersion = Health.RccVersion,
+                arbiterVersion = Health.ArbiterVersion
+            };
+
+            return Results.Json(response);
         }).RequireRateLimiting("unstrict");
 
         app.MapPost("/api/v1/avatar-render", async (HttpRequest req) =>
