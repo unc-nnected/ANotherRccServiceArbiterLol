@@ -17,7 +17,7 @@ static class Config
     public static string RAScriptPath { get; private set; } = "";
     public static string RMScriptPath { get; private set; } = "";
     public static string RMMScriptPath { get; private set; } = "";
-    public static int port { get; private set; } = 7000;
+    public static int port { get; private set; } = 7720;
     public static int cores { get; private set; } = 1;
     public static bool debug { get; private set; } = false;
     public static string SECRET = "my-mother-ate-fries-lol";
@@ -349,4 +349,4 @@ public record GSMJob
     public DateTime LastHeartbeat { get; set; }
     public bool Alive { get; set; }
 }
-public record RenewLeaseBody(string jobId, int seconds);
+public record RenewLeaseBody(string gameId, int expirationInSeconds);

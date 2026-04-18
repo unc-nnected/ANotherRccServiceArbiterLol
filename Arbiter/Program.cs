@@ -178,7 +178,7 @@ public class Program
             return Results.Json(new { status = "ready", jobId, fakeahport, pid });
         }).RequireRateLimiting("strict");
 
-        app.MapPost("/api/v1/gameserver/kill", (HttpRequest http, KillRequest req) =>
+        app.MapPost("/StopGame", (HttpRequest http, KillRequest req) =>
         {
             if (!http.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
                 return Results.Json(new { error = "unauthorized" }, statusCode: 401);
@@ -208,7 +208,6 @@ public class Program
         app.MapGet("/api/v1/health", () =>
         {
             Logger.Warn("/api/v1/health is deprecated, use /GetStats instead");
-
             return Results.NoContent();
         }).RequireRateLimiting("unstrict");
 
@@ -368,22 +367,22 @@ public class Program
             });
         }).RequireRateLimiting("strict");
 
-        app.MapPost("/api/v1/renewlease", (HttpRequest req, RenewLeaseBody body) =>
+        app.MapPost("RenewLease", (HttpRequest req, RenewLeaseBody body) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
                 return Results.Json(new { error = "unauthorized" }, statusCode: 401);
             }
 
-            if (string.IsNullOrWhiteSpace(body.jobId) || body.seconds <= 0)
+            if (string.IsNullOrWhiteSpace(body.gameId) || body.expirationInSeconds <= 0)
                 return Results.Json(new { error = "badrequest" }, statusCode: 400);
 
             var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
             if (Config.debug)
-                Logger.Info($"New client {clientIP} renew leasing {body.jobId} with {body.seconds} seconds");
+                Logger.Info($"New client {clientIP} renew leasing {body.gameId} with {body.expirationInSeconds} seconds");
 
-            var ok = Helpers.RenewLease(body.jobId, body.seconds);
+            var ok = Helpers.RenewLease(body.gameId, body.expirationInSeconds);
             return ok ? Results.Ok() : Results.NotFound();
         }).RequireRateLimiting("unstrict");
 
