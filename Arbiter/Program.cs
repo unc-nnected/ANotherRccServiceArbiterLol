@@ -295,7 +295,7 @@ public class Program
             return ok ? Results.Ok() : Results.NotFound();
         }).RequireRateLimiting("unstrict");
 
-        app.MapGet("/GetAllJobs", (HttpRequest req, int? port, int? limit) =>
+        app.MapGet("/   ", (HttpRequest req, int? port, int? limit) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
