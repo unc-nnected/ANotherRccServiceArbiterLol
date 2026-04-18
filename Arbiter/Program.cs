@@ -65,8 +65,7 @@ public class Program
         catch (Exception ex)
         {
             // what the fuck happend
-            Logger.Error(ex.ToString());
-            throw; //Environment.Exit(1);
+            throw new Exception(ex.ToString()); //Environment.Exit(1);
         }
 
         Logger.Print("Service starting...");

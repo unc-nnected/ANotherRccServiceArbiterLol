@@ -753,7 +753,7 @@ static class Helpers
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error disposing process {proc.Id}: {ex}");
+            throw new Exception($"Error disposing process {proc.Id}: {ex}");
         }
     }
 
@@ -925,8 +925,7 @@ static class Helpers
 
             if (!resp.IsSuccessStatusCode)
             {
-                Logger.Error("An unexpected error was occurred in RccService:\n" + responseText);
-                return false;
+                throw new Exception($"An unexpected error was occurred in RccService:\n" + responseText);
             }
 
             if (category == 2)
@@ -950,8 +949,7 @@ static class Helpers
         }
         catch (Exception ex)
         {
-            Logger.Error("SOAP exception:\n" + ex);
-            return false;
+            throw new Exception($"An unexpected error was occurred:\n" + ex);
         }
     }
 
@@ -1025,8 +1023,7 @@ static class Helpers
         }
         catch (Exception ex)
         {
-            Logger.Error($"SOAP RenewLease failed: {ex.Message}");
-            return false;
+            throw new Exception($"An unexpected error was occurred:\n" + ex);
         }
     }
 
