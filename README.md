@@ -1,6 +1,8 @@
 # ANotherRccServiceArbiterLol
 
-ANotherRccServiceArbiterLol (ANRSAL for short) is an arbiter designed to make servers and renders for a old MMO brickbuilder game.
+ANotherRccServiceArbiterLol (ANRSAL for short) is an arbiter using .NET 8.0 Core + Desktop designed to make servers and renders for a old MMO brickbuilder game.
+
+### How tf does ts work
 
 ```
 --dir "path" | path to RCCService directory, this one is required (DUH!)
@@ -44,3 +46,13 @@ To kill running jobs, use POST `/StopGame`. It takes `{"pid": 67}`.
 To get all jobs from an running RCCService, use GET `/GetAllJobs?port={SOAP Port}&limit={List limited amount of jobs}`.
 
 To get a specific Job, use GET `/GetJob/{jobId}`.
+
+### What do I define in script?
+
+It's straightforward, do:
+```lua
+local accesskey = {accesskey}
+local userid, placeid = {placeid}
+local jobid = {jobid}
+```
+There should be more, but i lowkey forgot
