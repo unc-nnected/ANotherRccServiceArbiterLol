@@ -219,7 +219,7 @@ public class Program
             var response = new
             {
                 status = healthy ? "normal" : "stressed",
-                ram = MathF.Round(ram, 1),
+                PhysicalMemoryGigabytesUsage = MathF.Round(ram, 1),
                 availablePhysicalMemoryGigabytes = MathF.Round(Health.AvailablePhysicalMemoryGigabytes, 2),
                 totalPhysicalMemoryGigabytes = MathF.Round(Health.TotalPhysicalMemoryGigabytes, 2),
                 cpuUsage = MathF.Round(Health.CpuUsage, 2),
