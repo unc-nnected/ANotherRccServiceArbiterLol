@@ -157,13 +157,7 @@ public class Program
                     return await ExecuteAuthorizedJobAsync<GameserverRequest>(req, "gameserver", body => body.PlaceId > 0, body => {
                             var jobId = Guid.NewGuid().ToString();
 
-                            int fakeahport = Helpers.StartGameserver(
-                                jobId,
-                                body.PlaceId,
-                                out string? render,
-                                body.TeamCreate,
-                                out int ignoredPort,
-                                out int pid);
+                            int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out string? render, body.TeamCreate, out int ignoredPort, out int pid);
 
                             if (fakeahport == 0)
                                 return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
