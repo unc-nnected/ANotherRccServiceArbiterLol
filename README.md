@@ -37,7 +37,7 @@ Avatar takes `{"UserId": 1, "IsHeadshot": false, "IsClothing": false}` (classifi
 
 Model takes `{"AssetId": 1}` (classified as render),
 
-Mesh takes `{"Mesh": 1}` (classified as render),
+Mesh takes `{"MeshId": 1}` (classified as render),
 
 GameServer takes `{"PlaceId": 1, "TeamCreate": false}` (classified as persistent job).
 
