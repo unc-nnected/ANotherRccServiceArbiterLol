@@ -1,6 +1,6 @@
 # ANotherRccServiceArbiterLol
 
-ANotherRccServiceArbiterLol (ANRSAL for short) is an arbiter designed to make gameservers and renders with 2008E-2017E RCCService software.
+ANotherRccServiceArbiterLol (ANRSAL for short) is an arbiter designed to make servers and renders for a old MMO brickbuilder game.
 
 ```
 --dir "path" | path to RCCService directory, this one is required (DUH!)
@@ -29,15 +29,15 @@ To interact with the arbiter, here are the API endpoints:
 
 `/StartGame?type={GameServer, Avatar, Mesh, Model, Place}` is a POST endpoint, here are some POST requests:
 
-Place takes `{"PlaceId": 1}`
+Place takes `{"PlaceId": 1}` (classified as render),
 
-Avatar takes `{"UserId": 1, "IsHeadshot": false, "IsClothing": false}`
+Avatar takes `{"UserId": 1, "IsHeadshot": false, "IsClothing": false}` (classified as render),
 
-Model takes `{"AssetId": 1}`
+Model takes `{"AssetId": 1}` (classified as render),
 
-Mesh takes `{"Mesh": 1}`
+Mesh takes `{"Mesh": 1}` (classified as render),
 
-GameServer takes `{"PlaceId": 1, "TeamCreate": false}`.
+GameServer takes `{"PlaceId": 1, "TeamCreate": false}` (classified as persistent job).
 
 To kill running jobs, use POST `/StopGame`. It takes `{"pid": 67}`.
 
