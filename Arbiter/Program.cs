@@ -16,6 +16,7 @@ And sing along to the age of paranoia
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using System.Reflection;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -144,38 +145,92 @@ public class Program
         });
 
         app.UseRateLimiter();
-        app.MapPost("/api/v1/gameserver", async (HttpRequest req) =>
+        app.MapPost("/StartGame", async (HttpRequest req) =>
         {
-            // check authorization so we wont get random ass gameservers
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            var type = ParseJobType(req.Query["type"].FirstOrDefault());
+            if (type is null)
+                return Results.BadRequest(new { message = "BadRequest" });
+
+            switch (type.Value)
             {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+                case JobType.GameServer:
+                    return await ExecuteAuthorizedJobAsync<GameserverRequest>(req, "gameserver", body => body.PlaceId > 0, body => {
+                            var jobId = Guid.NewGuid().ToString();
+
+                            int fakeahport = Helpers.StartGameserver(
+                                jobId,
+                                body.PlaceId,
+                                out string? render,
+                                body.TeamCreate,
+                                out int ignoredPort,
+                                out int pid);
+
+                            if (fakeahport == 0)
+                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+
+                            return Task.FromResult<IResult>(
+                                Results.Json(new { message = "succeeded", jobId, fakeahport, pid }));
+                        });
+
+                case JobType.Avatar:
+                    return await ExecuteAuthorizedJobAsync<ARenderRequest>(req, "avatar render", body => body.UserId > 0, body => {
+                            var jobId = Guid.NewGuid().ToString();
+
+                            if (!Helpers.ARender(jobId, body.UserId, out string? render, body.IsHeadshot, body.IsClothing))
+                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+
+                            if (render is null)
+                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+
+                            return Task.FromResult<IResult>(
+                                Results.Json(new { message = "succeeded", jobId, base64 = render }));
+                        });
+
+                case JobType.Place:
+                    return await ExecuteAuthorizedJobAsync<RenderRequest>(req, "place render", body => body.PlaceId > 0, body => {
+                            var jobId = Guid.NewGuid().ToString();
+
+                            if (!Helpers.Render(jobId, body.PlaceId, out string? render))
+                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+
+                            if (render is null)
+                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+
+                            return Task.FromResult<IResult>(
+                                Results.Json(new { message = "succeeded", jobId, base64 = render }));
+                        });
+
+                case JobType.Model:
+                    return await ExecuteAuthorizedJobAsync<MRenderRequest>(req, "model render", body => body.AssetId > 0, body => {
+                            var jobId = Guid.NewGuid().ToString();
+
+                            if (!Helpers.MRender(jobId, body.AssetId, out string? render))
+                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+
+                            if (render is null)
+                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+
+                            return Task.FromResult<IResult>(
+                                Results.Json(new { message = "succeeded", jobId, base64 = render }));
+                        });
+
+                case JobType.Mesh:
+                    return await ExecuteAuthorizedJobAsync<MMRenderRequest>(req, "mesh render", body => body.MeshId > 0, body => {
+                            var jobId = Guid.NewGuid().ToString();
+
+                            if (!Helpers.MMRender(jobId, body.MeshId, out string? render))
+                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+
+                            if (render is null)
+                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+
+                            return Task.FromResult<IResult>(
+                                Results.Json(new { message = "succeeded", jobId, base64 = render }));
+                        });
+
+                default:
+                    return Results.BadRequest(new { error = "badrequest" });
             }
-
-            // get post data
-            var body = await JsonSerializer.DeserializeAsync<GameserverRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            // validate
-            if (body == null || body.PlaceId <= 0)
-                return Results.BadRequest(new { error = "badrequest" });
-
-            // do a bunch of variations..
-            string jobId = Guid.NewGuid().ToString();
-            int port = Helpers.GetPort();
-            int pid;
-            string? render;
-            // get client's ip for logging
-            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            Logger.Info($"New client {clientIP} creating gameserver with place {body.PlaceId} with port {port}");
-
-            // start the gameserver!
-            int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out render, body.TeamCreate, out int _, out pid);
-
-            if (fakeahport == 0)
-                return Results.Problem("RCCService couldn't execute OpenJob");
-
-            return Results.Json(new { status = "ready", jobId, fakeahport, pid });
         }).RequireRateLimiting("strict");
 
         app.MapPost("/StopGame", (HttpRequest http, KillRequest req) =>
@@ -205,12 +260,6 @@ public class Program
             });
         }).RequireRateLimiting("unstrict");
 
-        app.MapGet("/api/v1/health", () =>
-        {
-            Logger.Warn("/api/v1/health is deprecated, use /GetStats instead");
-            return Results.NoContent();
-        }).RequireRateLimiting("unstrict");
-
         app.MapGet("/GetStats", () =>
         {
             var healthy = Health.IsHealthy(out var ram);
@@ -234,139 +283,6 @@ public class Program
             return Results.Json(response);
         }).RequireRateLimiting("unstrict");
 
-        app.MapPost("/api/v1/avatar-render", async (HttpRequest req) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var body = await JsonSerializer.DeserializeAsync<ARenderRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (body == null || body.UserId <= 0)
-                return Results.BadRequest(new { error = "badrequest" });
-
-            string jobId = Guid.NewGuid().ToString();
-            int port = Helpers.GetPort();
-            int pid;
-            string? render;
-
-            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            Logger.Info($"New client {clientIP} creating avatar render with userId {body.UserId} with port {port}");
-
-            if (!Helpers.ARender(jobId, body.UserId, out render, body.IsHeadshot, body.IsClothing))
-                return Results.Problem("RCCService couldn't execute OpenJob");
-
-            if (render == null)
-                return Results.Problem("RCCService failed to render");
-
-            return Results.Json(new
-            {
-                jobId,
-                base64 = render
-            });
-        }).RequireRateLimiting("strict");
-
-        app.MapPost("/api/v1/place-render", async (HttpRequest req) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var body = await JsonSerializer.DeserializeAsync<RenderRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (body == null || body.PlaceId <= 0)
-                return Results.BadRequest(new { error = "badrequest" });
-
-            string jobId = Guid.NewGuid().ToString();
-            int port = Helpers.GetPort();
-            string? render;
-
-            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            Logger.Info($"New client {clientIP} creating place render with placeId {body.PlaceId} with port {port}");
-
-            if (!Helpers.Render(jobId, body.PlaceId, out render))
-                return Results.Problem("RCCService couldn't execute OpenJob");
-
-            if (render == null)
-                return Results.Problem("RCCService failed to render");
-
-            return Results.Json(new
-            {
-                jobId,
-                base64 = render
-            });
-        }).RequireRateLimiting("strict");
-
-        app.MapPost("/api/v1/model-render", async (HttpRequest req) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var body = await JsonSerializer.DeserializeAsync<MRenderRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (body == null || body.AssetId <= 0)
-                return Results.BadRequest(new { error = "badrequest" });
-
-            string jobId = Guid.NewGuid().ToString();
-            int port = Helpers.GetPort();
-            string? render;
-
-            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            Logger.Info($"New client {clientIP} creating model render with assetId {body.AssetId} with port {port}");
-
-            if (!Helpers.MRender(jobId, body.AssetId, out render))
-                return Results.Problem("RCCService couldn't execute OpenJob");
-
-            if (render == null)
-                return Results.Problem("RCCService failed to render");
-
-            return Results.Json(new
-            {
-                jobId,
-                base64 = render
-            });
-        }).RequireRateLimiting("strict");
-
-        app.MapPost("/api/v1/mesh-render", async (HttpRequest req) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            var body = await JsonSerializer.DeserializeAsync<MMRenderRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (body == null || body.MeshId <= 0)
-                return Results.BadRequest(new { error = "badrequest" });
-
-            string jobId = Guid.NewGuid().ToString();
-            int port = Helpers.GetPort();
-            string? render;
-
-            var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            Logger.Info($"New client {clientIP} creating model render with MeshId {body.MeshId} with port {port}");
-
-            if (!Helpers.MMRender(jobId, body.MeshId, out render))
-                return Results.Problem("RCCService couldn't execute OpenJob");
-
-            if (render == null)
-                return Results.Problem("RCCService failed to render");
-
-            return Results.Json(new
-            {
-                jobId,
-                base64 = render
-            });
-        }).RequireRateLimiting("strict");
-
         app.MapPost("RenewLease", (HttpRequest req, RenewLeaseBody body) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
@@ -386,7 +302,7 @@ public class Program
             return ok ? Results.Ok() : Results.NotFound();
         }).RequireRateLimiting("unstrict");
 
-        app.MapGet("/api/v1/getalljobs", (HttpRequest req, int? port, int? limit) =>
+        app.MapGet("/GetAllJobs", (HttpRequest req, int? port, int? limit) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
@@ -398,7 +314,7 @@ public class Program
             return Results.Json(jobs);
         }).RequireRateLimiting("strict");
 
-        app.MapGet("/api/v1/job/{jobId}", (HttpRequest req, string jobId) =>
+        app.MapGet("/GetJob/{jobId}", (HttpRequest req, string jobId) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
@@ -431,4 +347,35 @@ public class Program
         });
         app.Run($"http://0.0.0.0:{Config.port}");
     }
+    enum JobType
+    {
+        GameServer,
+        Avatar,
+        Place,
+        Model,
+        Mesh
+    }
+
+    static JobType? ParseJobType(string? value)
+    {
+        return Enum.TryParse<JobType>(value, ignoreCase: true, out var type) ? type : null;
+    }
+
+    static async Task<IResult> ExecuteAuthorizedJobAsync<TBody>(HttpRequest req, string name, Func<TBody, bool> validate, Func<TBody, Task<IResult>> run){
+        if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+
+        var body = await JsonSerializer.DeserializeAsync<TBody>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (body is null || !validate(body))
+            return Results.BadRequest(new { error = "badrequest" });
+
+        var clientIP = req.Headers.TryGetValue("X-Forwarded-For", out var forwarded) ? forwarded.ToString().Split(',')[0].Trim() : req.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        Logger.Info($"New client {clientIP} creating {name}");
+
+        return await run(body);
+    }
+
+    delegate Task<IResult> JobHandler(HttpRequest req);
 }
