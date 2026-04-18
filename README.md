@@ -30,9 +30,13 @@ To interact with the arbiter, here are the API endpoints:
 `/StartGame?type={GameServer, Avatar, Mesh, Model, Place}`
 
 Place takes `{"PlaceId": 1}`
+
 Avatar takes `{"UserId": 1, "IsHeadshot": false, "IsClothing": false}`
+
 Model takes `{"AssetId": 1}`
+
 Mesh takes `{"Mesh": 1}`
+
 GameServer takes `{"PlaceId": 1, "TeamCreate": false}`
 
 To kill games, use `/StopGame`. It takes `{"pid": 67}`.
