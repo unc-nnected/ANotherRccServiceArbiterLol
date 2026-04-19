@@ -146,7 +146,7 @@ public class Program
         app.UseRateLimiter();
         app.MapPost("/StartGame", async (HttpRequest req) =>
         {
-            var type = ParseJobType(req.Query["type"].FirstOrDefault());
+            var type = Config.ParseJobType(req.Query["type"].FirstOrDefault());
             if (type is null)
                 return Results.BadRequest(new { message = "BadRequest" });
 
@@ -295,7 +295,7 @@ public class Program
             return ok ? Results.Ok() : Results.NotFound();
         }).RequireRateLimiting("unstrict");
 
-        app.MapGet("/   ", (HttpRequest req, int? port, int? limit) =>
+        app.MapGet("/GetAllJobs", (HttpRequest req, int? port, int? limit) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
@@ -339,19 +339,6 @@ public class Program
             Helpers.killallthefags();
         });
         app.Run($"http://0.0.0.0:{Config.port}");
-    }
-    enum JobType
-    {
-        GameServer,
-        Avatar,
-        Place,
-        Model,
-        Mesh
-    }
-
-    static JobType? ParseJobType(string? value)
-    {
-        return Enum.TryParse<JobType>(value, ignoreCase: true, out var type) ? type : null;
     }
 
     static async Task<IResult> ExecuteAuthorizedJobAsync<TBody>(HttpRequest req, string name, Func<TBody, bool> validate, Func<TBody, Task<IResult>> run){

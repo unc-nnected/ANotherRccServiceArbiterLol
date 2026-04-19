@@ -328,6 +328,10 @@ static class Config
             RCCDirectory = AppContext.BaseDirectory;
         }
     }
+    public static JobType? ParseJobType(string? value)
+    {
+        return Enum.TryParse<JobType>(value, ignoreCase: true, out var type) ? type : null;
+    }
 }
 
 // bunch of post data shit!
@@ -350,3 +354,11 @@ public record GSMJob
     public bool Alive { get; set; }
 }
 public record RenewLeaseBody(string gameId, int expirationInSeconds);
+enum JobType
+{
+    GameServer,
+    Avatar,
+    Place,
+    Model,
+    Mesh
+}
