@@ -657,8 +657,8 @@ static class Helpers
                 FileName = win ? exe : "wine",
                 Arguments = win ? $"/Console /content:content\\\\ {port}" : $"\"{exe}\" /Console /content:content\\\\ {port}",
                 WorkingDirectory = Config.RCCDirectory,
-                UseShellExecute = true,
-                CreateNoWindow = false,
+                UseShellExecute = (Config.legacy) ? false : true,
+                CreateNoWindow = (Config.legacy) ? false : true,
                 WindowStyle = ProcessWindowStyle.Minimized
             };
 
