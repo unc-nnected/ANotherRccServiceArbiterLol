@@ -335,18 +335,18 @@ static class Config
 }
 
 // bunch of post data shit!
-public record RenderRequest(ulong PlaceId);
-public record ARenderRequest(ulong UserId, bool IsHeadshot, bool IsClothing);
-public record MRenderRequest(ulong AssetId);
-public record MMRenderRequest(ulong MeshId);
-public record GameserverRequest(ulong PlaceId, bool TeamCreate);
+public record RenderRequest(string PlaceId);
+public record ARenderRequest(string UserId, bool IsHeadshot, bool IsClothing);
+public record MRenderRequest(string AssetId);
+public record MMRenderRequest(string MeshId);
+public record GameserverRequest(string PlaceId, bool TeamCreate);
 public record KillRequest(int pid);
 public record GSMJob
 {
     public string JobId { get; init; } = "";
     public int Port { get; init; }
     public int SOAP { get; init; }
-    public ulong PlaceId { get; init; }
+    public string PlaceId { get; init; }
     public int Pid { get; set; }
 
     public DateTime ExpiresAt { get; set; }

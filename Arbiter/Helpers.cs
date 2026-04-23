@@ -122,7 +122,7 @@ static class Helpers
         try
         {
             string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+            SOAP(Guid.NewGuid().ToString(), port, "0", "return true", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
         }
         catch {}
 
@@ -149,7 +149,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJob"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, "0", "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJob"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
@@ -461,7 +461,7 @@ static class Helpers
         }
     }
 
-    public static bool Render(string jobId, ulong placeId, out string? render)
+    public static bool Render(string jobId, string placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -485,7 +485,7 @@ static class Helpers
         return true;
     }
 
-    public static bool ARender(string jobId, ulong placeId, out string? render, bool headshot, bool isclothing)
+    public static bool ARender(string jobId, string placeId, out string? render, bool headshot, bool isclothing)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -509,7 +509,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MRender(string jobId, ulong placeId, out string? render)
+    public static bool MRender(string jobId, string placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -533,7 +533,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MMRender(string jobId, ulong placeId, out string? render)
+    public static bool MMRender(string jobId, string placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -557,7 +557,7 @@ static class Helpers
         return true;
     }
 
-    public static int StartGameserver(string jobId, ulong placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
+    public static int StartGameserver(string jobId, string placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
         fakeahport = GetGameServerPort();
@@ -694,7 +694,7 @@ static class Helpers
                 try
                 {
                     string? tmp;
-                    SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+                    SOAP(Guid.NewGuid().ToString(), port, "0", "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
                 }
                 catch { }
 
@@ -816,7 +816,7 @@ static class Helpers
         }
     }
 
-    private static bool SOAP(string jobId, int port, ulong placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
+    private static bool SOAP(string jobId, int port, string placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
     {
         render = null;
 
@@ -855,7 +855,7 @@ static class Helpers
             ServicePointManager.Expect100Continue = Config.autistic;
             ServicePointManager.UseNagleAlgorithm = false;
 
-            type = type.Replace("{placeId}", placeId.ToString());
+            type = type.Replace("{placeId}", placeId.ToString().Trim('"'));
             type = type.Replace("{jobId}", jobId);
             type = type.Replace("{port}", fakeahport.ToString());
             type = type.Replace("{accesskey}", Config.AccessKey);
