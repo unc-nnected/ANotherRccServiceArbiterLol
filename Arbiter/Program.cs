@@ -153,69 +153,88 @@ public class Program
             switch (type.Value)
             {
                 case JobType.GameServer:
-                    return await ExecuteAuthorizedJobAsync<GameserverRequest>(req, "gameserver", body => body.PlaceId > 0, body => {
+                    return await ExecuteAuthorizedJobAsync<GameserverRequest>(req, "gameserver", body => !string.IsNullOrWhiteSpace(body.PlaceId), body =>
+                        {
                             var jobId = Guid.NewGuid().ToString();
+                            var placeId = body.PlaceId.Trim().Trim('"');
 
-                            int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out string? render, body.TeamCreate, out int ignoredPort, out int pid);
+                            int fakeahport = Helpers.StartGameserver(jobId, placeId, out string? render, body.TeamCreate, out int ignoredPort, out int pid);
 
                             if (fakeahport == 0)
-                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService couldn't Open a Job"));
 
                             return Task.FromResult<IResult>(
                                 Results.Json(new { message = "succeeded", jobId, fakeahport, pid }));
                         });
 
                 case JobType.Avatar:
-                    return await ExecuteAuthorizedJobAsync<ARenderRequest>(req, "avatar render", body => body.UserId > 0, body => {
+                    return await ExecuteAuthorizedJobAsync<ARenderRequest>(req, "avatar render", body => !string.IsNullOrWhiteSpace(body.UserId), body =>
+                        {
                             var jobId = Guid.NewGuid().ToString();
+                            var userId = body.UserId.Trim().Trim('"');
 
-                            if (!Helpers.ARender(jobId, body.UserId, out string? render, body.IsHeadshot, body.IsClothing))
-                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+                            if (!Helpers.ARender(jobId, userId, out string? render, body.IsHeadshot, body.IsClothing))
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService couldn't Open a Job"));
 
                             if (render is null)
-                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService failed to render"));
 
                             return Task.FromResult<IResult>(
                                 Results.Json(new { message = "succeeded", jobId, base64 = render }));
                         });
 
                 case JobType.Place:
-                    return await ExecuteAuthorizedJobAsync<RenderRequest>(req, "place render", body => body.PlaceId > 0, body => {
+                    return await ExecuteAuthorizedJobAsync<RenderRequest>(req, "place render", body => !string.IsNullOrWhiteSpace(body.PlaceId), body =>
+                        {
                             var jobId = Guid.NewGuid().ToString();
+                            var placeId = body.PlaceId.Trim().Trim('"');
 
-                            if (!Helpers.Render(jobId, body.PlaceId, out string? render))
-                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+                            if (!Helpers.Render(jobId, placeId, out string? render))
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService couldn't Open a Job"));
 
                             if (render is null)
-                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService failed to render"));
 
                             return Task.FromResult<IResult>(
                                 Results.Json(new { message = "succeeded", jobId, base64 = render }));
                         });
 
                 case JobType.Model:
-                    return await ExecuteAuthorizedJobAsync<MRenderRequest>(req, "model render", body => body.AssetId > 0, body => {
+                    return await ExecuteAuthorizedJobAsync<MRenderRequest>(req, "model render", body => !string.IsNullOrWhiteSpace(body.AssetId), body =>
+                        {
                             var jobId = Guid.NewGuid().ToString();
+                            var assetId = body.AssetId.Trim().Trim('"');
 
-                            if (!Helpers.MRender(jobId, body.AssetId, out string? render))
-                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+                            if (!Helpers.MRender(jobId, assetId, out string? render))
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService couldn't Open a Job"));
 
                             if (render is null)
-                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService failed to render"));
 
                             return Task.FromResult<IResult>(
                                 Results.Json(new { message = "succeeded", jobId, base64 = render }));
                         });
 
                 case JobType.Mesh:
-                    return await ExecuteAuthorizedJobAsync<MMRenderRequest>(req, "mesh render", body => body.MeshId > 0, body => {
+                    return await ExecuteAuthorizedJobAsync<MMRenderRequest>(req, "mesh render", body => !string.IsNullOrWhiteSpace(body.MeshId), body =>
+                        {
                             var jobId = Guid.NewGuid().ToString();
+                            var meshId = body.MeshId.Trim().Trim('"');
 
-                            if (!Helpers.MMRender(jobId, body.MeshId, out string? render))
-                                return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
+                            if (!Helpers.MMRender(jobId, meshId, out string? render))
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService couldn't Open a Job"));
 
                             if (render is null)
-                                return Task.FromResult<IResult>(Results.Problem("RCCService failed to render"));
+                                return Task.FromResult<IResult>(
+                                    Results.Problem("RCCService failed to render"));
 
                             return Task.FromResult<IResult>(
                                 Results.Json(new { message = "succeeded", jobId, base64 = render }));
