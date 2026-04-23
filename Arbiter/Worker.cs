@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 
 public class Worker : BackgroundService
 {
+    private readonly HttpClient _http = new HttpClient();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Config.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray());
@@ -16,10 +19,5 @@ public class Worker : BackgroundService
         }
 
         Config.ReloadScripts();
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await Task.Delay(1000, stoppingToken);
-        }
     }
 }

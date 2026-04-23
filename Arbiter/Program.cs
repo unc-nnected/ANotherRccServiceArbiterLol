@@ -322,6 +322,16 @@ public class Program
             return Results.Json(job);
         }).RequireRateLimiting("strict"); // dont care honestly
 
+        app.MapPost("/ExecuteScript", (HttpRequest req) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            return Results.NoContent();
+        }).RequireRateLimiting("strict"); // dont care honestly
+
         Logger.Print("Intializing RCCService Pool");
         Helpers.runPoolManager();
         while (!Config.Ready)

@@ -312,7 +312,7 @@ static class Config
                     poolgs = true;
                     break;
 
-                case "--service":
+                case "--service": // act like a windows service
                     service = true;
                     break;
 
@@ -336,7 +336,7 @@ static class Config
 
 // bunch of post data shit!
 public record RenderRequest(int PlaceId);
-public record ARenderRequest(int UserId, bool IsHeadshot, bool IsClothing);
+public record ARenderRequest(ulong UserId, bool IsHeadshot, bool IsClothing);
 public record MRenderRequest(int AssetId);
 public record MMRenderRequest(int MeshId);
 public record GameserverRequest(int PlaceId, bool TeamCreate);
