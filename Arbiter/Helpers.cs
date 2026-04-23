@@ -461,7 +461,7 @@ static class Helpers
         }
     }
 
-    public static bool Render(string jobId, int placeId, out string? render)
+    public static bool Render(string jobId, ulong placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -485,7 +485,7 @@ static class Helpers
         return true;
     }
 
-    public static bool ARender(string jobId, int placeId, out string? render, bool headshot, bool isclothing)
+    public static bool ARender(string jobId, ulong placeId, out string? render, bool headshot, bool isclothing)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -509,7 +509,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MRender(string jobId, int placeId, out string? render)
+    public static bool MRender(string jobId, ulong placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -533,7 +533,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MMRender(string jobId, int placeId, out string? render)
+    public static bool MMRender(string jobId, ulong placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -557,7 +557,7 @@ static class Helpers
         return true;
     }
 
-    public static int StartGameserver(string jobId, int placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
+    public static int StartGameserver(string jobId, ulong placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
         fakeahport = GetGameServerPort();
@@ -816,7 +816,7 @@ static class Helpers
         }
     }
 
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
+    private static bool SOAP(string jobId, int port, ulong placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
     {
         render = null;
 
