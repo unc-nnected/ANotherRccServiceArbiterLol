@@ -15,22 +15,31 @@ And sing along to the age of paranoia
 */
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
-using System.Reflection;
 using System.Linq;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Program
 {
+    private static readonly HttpClient client = new HttpClient
+    {
+        Timeout = Timeout.InfiniteTimeSpan
+    };
+
     public static async Task Main(string[] args)
     {
         Console.Title = "ANotherRccServiceArbiterLol";
         try
         {
             // parse config
-            Config.Parse(args);
+            if (!Config.Parse(args))
+                throw new Exception("Error in the configuration!");
             Logger.Print($"Access key read: {Config.FakeSECRET}");
             using var sha = SHA256.Create();
             var SECREThash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(Config.SECRET)));
@@ -276,7 +285,7 @@ public class Program
             return Results.Json(response);
         }).RequireRateLimiting("unstrict");
 
-        app.MapPost("RenewLease", (HttpRequest req, RenewLeaseBody body) =>
+        app.MapPost("/RenewLease", (HttpRequest req, RenewLeaseBody body) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
             {
@@ -307,6 +316,112 @@ public class Program
             return Results.Json(jobs);
         }).RequireRateLimiting("strict");
 
+        app.MapPost("/ExecuteScript", async Task<IResult> (HttpRequest req, ExecuteScript body) =>
+        {
+            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
+            {
+                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+            }
+
+            var job = Helpers.GetJob(body.gameId);
+
+            if (job == null)
+                return Results.NotFound();
+
+            string BuildArgument(object arg) // grace, let's see how you can work with this
+            {
+                return arg switch
+                {
+                    string s => $@"
+<rob:LuaValue>
+  <rob:type>LUA_TSTRING</rob:type>
+  <rob:value>{System.Security.SecurityElement.Escape(s)}</rob:value>
+</rob:LuaValue>",
+
+                    int i => $@"
+<rob:LuaValue>
+  <rob:type>LUA_TNUMBER</rob:type>
+  <rob:value>{i}</rob:value>
+</rob:LuaValue>",
+
+                    double d => $@"
+<rob:LuaValue>
+  <rob:type>LUA_TNUMBER</rob:type>
+  <rob:value>{d}</rob:value>
+</rob:LuaValue>",
+
+                    bool b => $@"
+<rob:LuaValue>
+  <rob:type>LUA_TBOOLEAN</rob:type>
+  <rob:value>{b.ToString().ToLower()}</rob:value>
+</rob:LuaValue>",
+
+                    null => @"
+<rob:LuaValue>
+  <rob:type>LUA_TNIL</rob:type>
+  <rob:value></rob:value>
+</rob:LuaValue>",
+
+                    _ => throw new Exception($"Unsupported argument type: {arg.GetType()}")
+                };
+            }
+
+            string arguments = "";
+
+            if (body.arguments != null && body.arguments.Any())
+            {
+                var sb = new StringBuilder();
+                sb.Append("<rob:arguments>");
+
+                foreach (var arg in body.arguments)
+                {
+                    sb.Append(BuildArgument(arg));
+                }
+
+                sb.Append("</rob:arguments>");
+                arguments = sb.ToString();
+            }
+
+            try
+            {
+                ServicePointManager.Expect100Continue = Config.autistic;
+                ServicePointManager.UseNagleAlgorithm = false;
+
+                var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
+  <soapenv:Body>
+    <rob:Execute>
+      <rob:jobID>{body.gameId}</rob:jobID>
+      <rob:script>
+        <rob:name>{body.scriptName}</rob:name>
+        <rob:script><![CDATA[
+            {body.script}
+        ]]></rob:script>
+      </rob:script>
+    {arguments}
+    </rob:Execute>
+  </soapenv:Body>
+</soapenv:Envelope>";
+
+                using var fakeahreq = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{job.SOAP}/");
+                fakeahreq.Version = HttpVersion.Version11;
+                fakeahreq.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
+                fakeahreq.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
+                fakeahreq.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
+                fakeahreq.Headers.Add("SOAPAction", "Execute");
+                fakeahreq.Headers.Host = $"127.0.0.1:{job.SOAP}";
+                fakeahreq.Headers.ConnectionClose = true;
+                client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
+
+                using var resp = await client.SendAsync(fakeahreq);
+                return Results.Json(new {message = "succeeded"});
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"An unexpected error was occurred:\n" + ex);
+            }
+        }).RequireRateLimiting("strict"); // dont care honestly
+
         app.MapGet("/GetJob/{jobId}", (HttpRequest req, string jobId) =>
         {
             if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
@@ -320,16 +435,6 @@ public class Program
                 return Results.NotFound();
 
             return Results.Json(job);
-        }).RequireRateLimiting("strict"); // dont care honestly
-
-        app.MapPost("/ExecuteScript", (HttpRequest req) =>
-        {
-            if (!req.Headers.TryGetValue("Authorization", out var auth) || !Helpers.IsAuthorized(auth!))
-            {
-                return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-            }
-
-            return Results.NoContent();
         }).RequireRateLimiting("strict"); // dont care honestly
 
         Logger.Print("Intializing RCCService Pool");

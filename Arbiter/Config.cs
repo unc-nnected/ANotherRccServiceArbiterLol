@@ -187,7 +187,7 @@ static class Config
         }
     }
 
-    public static void Parse(string[] args)
+    public static bool Parse(string[] args)
     {
         for (int i = 0; i < args.Length; i++)
         {
@@ -327,6 +327,8 @@ static class Config
             // I GUESS WE'LL JUST SET OUR OWN
             RCCDirectory = AppContext.BaseDirectory;
         }
+
+        return true;
     }
     public static JobType? ParseJobType(string? value)
     {
@@ -362,3 +364,4 @@ enum JobType
     Model,
     Mesh
 }
+public record ExecuteScript(string gameId, string scriptName, string arguments, string script);

@@ -149,7 +149,7 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJob"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
