@@ -646,7 +646,8 @@ static class Helpers
 
             proxy.Start();
 
-            Logger.Print($"Started a reverse proxy for gameserver: {PublicPort} to {GameServerPort}");
+            if (Config.debug)
+                Logger.Info($"Started a reverse proxy for gameserver: {PublicPort} to {GameServerPort}");
         }
 
         fakeahport = PublicPort;
