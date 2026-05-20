@@ -34,6 +34,7 @@ static class Config
     public static bool poolgs { get; private set; } = false;
     public static bool service { get; private set; } = false;
     public static bool legacy { get; private set; } = false;
+    public static bool fakeahReverseProxy { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -318,6 +319,10 @@ static class Config
 
                 case "--legacy": // use legacy stuff
                     legacy = true;
+                    break;
+
+                case "--reverseproxy": // reverse proxy for gameservers
+                    fakeahReverseProxy = true;
                     break;
             }
         }

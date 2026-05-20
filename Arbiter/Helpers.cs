@@ -12,6 +12,76 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
 
+public sealed class ReverseProxy
+{
+    private readonly UdpClient _listener;
+    private readonly IPEndPoint _target;
+
+    private readonly Dictionary<IPEndPoint, UdpClient> _clients = new();
+
+    public ReverseProxy(int listen, int target)
+    {
+        _listener = new UdpClient(listen);
+        _target = new IPEndPoint(IPAddress.Parse("127.0.0.1"), target);
+    }
+
+    public void Start()
+    {
+        _ = Task.Run(RunAsync);
+    }
+
+    private async Task RunAsync()
+    {
+        while (true)
+        {
+            UdpReceiveResult result;
+
+            try
+            {
+                result = await _listener.ReceiveAsync();
+            }
+            catch
+            {
+                continue;
+            }
+
+            var client = result.RemoteEndPoint;
+
+            if (!_clients.TryGetValue(client, out var server))
+            {
+                server = new UdpClient(0);
+                _clients[client] = server;
+
+                _ = Task.Run(() => HandleServerTraffic(client, server));
+            }
+
+            try
+            {
+                await server.SendAsync(result.Buffer, result.Buffer.Length, _target);
+            }
+            catch {}
+        }
+    }
+
+    private async Task HandleServerTraffic(IPEndPoint client, UdpClient serverSocket) {
+        while (true)
+        {
+            try
+            {
+                var result = await serverSocket.ReceiveAsync();
+                await _listener.SendAsync(result.Buffer, result.Buffer.Length, client);
+            }
+            catch
+            {
+                break;
+            }
+        }
+
+        serverSocket.Dispose();
+        _clients.Remove(client);
+    }
+}
+
 static class Helpers
 {
     private static readonly Dictionary<string, GSMJob> Jobs = new();
@@ -560,7 +630,26 @@ static class Helpers
     public static int StartGameserver(string jobId, int placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        fakeahport = GetGameServerPort();
+        int GameServerPort = GetGameServerPort();
+        int PublicPort = GameServerPort;
+
+        ReverseProxy? proxy = null;
+
+        if (Config.fakeahReverseProxy)
+        {
+            PublicPort = GetGameServerPort();
+
+            while (PublicPort == GameServerPort)
+                PublicPort = GetGameServerPort();
+
+            proxy = new ReverseProxy(PublicPort, GameServerPort);
+
+            proxy.Start();
+
+            Logger.Print($"Started a reverse proxy for gameserver: {PublicPort} to {GameServerPort}");
+        }
+
+        fakeahport = PublicPort;
         pid = 0;
         bool panic = false;
 
@@ -607,7 +696,7 @@ static class Helpers
 
         pid = proc.Id;
         int fakeahtimeout = Config.legacy ? 604800 : 30;
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport, jobtype: "OpenJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport: GameServerPort, jobtype: "OpenJobEx"))
         {
             lock (PoolLock)
             {
