@@ -236,14 +236,14 @@ static class Helpers
             script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
         } else
         {
-            var payload = new
+            /*var payload = new
             {
                 Mode = "Thumbnail",
                 Settings = new
                 {
                     Type = "Model",
                     PlaceId = 67,
-                    UserId = 1,
+                    UserId = 67,
                     BaseUrl = Config.BaseURL,
                     MatchmakingContextId = 1,
                     Arguments = new object[] { $"http://www.{Config.BaseURL}/asset/?id=67", "PNG", 420, 420, "http://www.{Config.BaseURL}" } // idk how to make it not guess that its www
@@ -254,7 +254,8 @@ static class Helpers
                 }
             };
 
-            script = JsonSerializer.Serialize(payload);
+            script = JsonSerializer.Serialize(payload);*/
+            script = "{}"; // we dont know how to warm up so
         }
 
         try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
@@ -569,7 +570,7 @@ static class Helpers
         }
     }
 
-    public static bool Render(string jobId, int placeId, out string? render)
+    public static bool Render(string jobId, long placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -593,7 +594,7 @@ static class Helpers
         return true;
     }
 
-    public static bool ARender(string jobId, int placeId, out string? render, bool headshot, bool isclothing)
+    public static bool ARender(string jobId, long placeId, out string? render, bool headshot, bool isclothing)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -617,7 +618,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MRender(string jobId, int placeId, out string? render)
+    public static bool MRender(string jobId, long placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -641,7 +642,7 @@ static class Helpers
         return true;
     }
 
-    public static bool MMRender(string jobId, int placeId, out string? render)
+    public static bool MMRender(string jobId, long placeId, out string? render)
     {
         render = null;
         var (proc, SOAPPort, panic) = getRCCService();
@@ -665,7 +666,7 @@ static class Helpers
         return true;
     }
 
-    public static int StartGameserver(string jobId, int placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
+    public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
         int GameServerPort = GetGameServerPort();
@@ -906,11 +907,14 @@ static class Helpers
         }
     }
 
-    public static bool KillbyID(int pid)
+    public static bool KillbyID(long pid)
     {
+        if (pid < int.MinValue || pid > int.MaxValue)
+            return false;
+
         try
         {
-            var proc = Process.GetProcessById(pid);
+            var proc = Process.GetProcessById((int)pid);
 
             if (!proc.ProcessName.Contains(Config.name, StringComparison.OrdinalIgnoreCase))
                 return false;
@@ -965,7 +969,7 @@ static class Helpers
         }
     }
 
-    private static bool SOAP(string jobId, int port, int placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
+    private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
     {
         render = null;
 
@@ -1110,7 +1114,7 @@ static class Helpers
         }
     }
 
-    public static GSMJob? GetJobByPID(int pid)
+    public static GSMJob? GetJobByPID(long pid)
     {
         lock (JobsLock)
         {
