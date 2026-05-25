@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 
 public sealed class ReverseProxy
@@ -191,8 +192,17 @@ static class Helpers
 
         try
         {
-            string? tmp;
-            SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+            string? tmp; string script;
+
+            if (!Config.json)
+            {
+                script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
+                SOAP(Guid.NewGuid().ToString(), port, 0, script, 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+            }
+            else
+            {
+                // again, we dont have a way to know if rccservices alive, so pretend that it is
+            }
         }
         catch {}
 
@@ -219,7 +229,35 @@ static class Helpers
         }
         if (!alive) { Kill(proc); return (null, 0); }
 
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, "Instance.new('Part', workspace) game:GetService('RunService'):Run()", 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
+        string script;
+
+        if (!Config.json)
+        {
+            script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
+        } else
+        {
+            var payload = new
+            {
+                Mode = "Thumbnail",
+                Settings = new
+                {
+                    Type = "Model",
+                    PlaceId = 67,
+                    UserId = 1,
+                    BaseUrl = Config.BaseURL,
+                    MatchmakingContextId = 1,
+                    Arguments = new object[] { $"http://www.{Config.BaseURL}/asset/?id=67", "PNG", 420, 420, "http://www.{Config.BaseURL}" } // idk how to make it not guess that its www
+                },
+                Arguments = new
+                {
+                    MachineAddress = "127.0.0.1"
+                }
+            };
+
+            script = JsonSerializer.Serialize(payload);
+        }
+
+        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
@@ -745,7 +783,18 @@ static class Helpers
             var psi = new ProcessStartInfo
             {
                 FileName = win ? exe : "wine",
-                Arguments = win ? $"/Console /content:content\\\\ {port}" : $"\"{exe}\" /Console /content:content\\\\ {port}",
+                Arguments = // god help me
+                    Config.json
+                        ? (Config.debug
+                            ? (win
+                                ? $"-verbose -settingsfile \"DevSettingsFile.json\" -Console -port {port}"
+                                : $"\"{exe}\" -verbose -settingsfile \"DevSettingsFile.json\" -Console -port {port}")
+                            : (win
+                                ? $"-Console -port {port}"
+                                : $"\"{exe}\" -Console -port {port}"))
+                        : (win
+                            ? $"/Console /content:content\\\\ {port}"
+                            : $"\"{exe}\" /Console /content:content\\\\ {port}"),
                 WorkingDirectory = Config.RCCDirectory,
                 UseShellExecute = (Config.legacy) ? false : true,
                 CreateNoWindow = (Config.legacy) ? false : true,
@@ -784,7 +833,17 @@ static class Helpers
                 try
                 {
                     string? tmp;
-                    SOAP(Guid.NewGuid().ToString(), port, 0, "return true", 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+                    string script;
+
+                    if (!Config.json)
+                    {
+                        script = "return true";
+                        SOAP(Guid.NewGuid().ToString(), port, 0, script, 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
+                    }
+                    else
+                    {
+                        // we dont have a way to know if rccservice's alive other than HelloWorld, which im not making a different function for it, so, for now, just pretend that RCCService is alive.
+                    }
                 }
                 catch { }
 
@@ -942,7 +1001,7 @@ static class Helpers
         }
         try
         {
-            ServicePointManager.Expect100Continue = Config.autistic;
+            ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
 
             type = type.Replace("{placeId}", placeId.ToString());
@@ -1008,7 +1067,7 @@ static class Helpers
             req.Headers.Add("SOAPAction", jobtype);
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
-            client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
+            client.DefaultRequestHeaders.ExpectContinue = false;
 
             using var resp = client.SendAsync(req, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult();
             var responseText = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
@@ -1085,7 +1144,7 @@ static class Helpers
     {
         try
         {
-            ServicePointManager.Expect100Continue = Config.autistic;
+            ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
 
             var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -1106,7 +1165,7 @@ static class Helpers
             req.Headers.Add("SOAPAction", "RenewLease");
             req.Headers.Host = $"127.0.0.1:{port}";
             req.Headers.ConnectionClose = true;
-            client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
+            client.DefaultRequestHeaders.ExpectContinue = false;
 
             using var resp = client.Send(req);
             return resp.IsSuccessStatusCode;

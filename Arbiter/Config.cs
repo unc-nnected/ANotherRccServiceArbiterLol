@@ -30,7 +30,7 @@ static class Config
     public static string name = "RCCService";
     public static bool signing { get; private set; } = false;
     public static bool inject { get; private set; } = false;
-    public static bool autistic { get; private set; } = false;
+    public static bool json { get; private set; } = false;
     public static bool poolgs { get; private set; } = false;
     public static bool service { get; private set; } = false;
     public static bool legacy { get; private set; } = false;
@@ -305,8 +305,8 @@ static class Config
                     inject = true;
                     break;
 
-                case "--autisticrcc": // FUCK YOU RCCSERVICE I HATE YOU
-                    autistic = true;
+                case "--json": // speak json for 2017L+ rccservices
+                    json = true;
                     break;
 
                 case "--poolforgameservers": // use pooled rccservices for gameservers

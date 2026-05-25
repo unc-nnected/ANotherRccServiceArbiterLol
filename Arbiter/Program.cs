@@ -384,7 +384,7 @@ public class Program
 
             try
             {
-                ServicePointManager.Expect100Continue = Config.autistic;
+                ServicePointManager.Expect100Continue = false;
                 ServicePointManager.UseNagleAlgorithm = false;
 
                 var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -411,7 +411,7 @@ public class Program
                 fakeahreq.Headers.Add("SOAPAction", "Execute");
                 fakeahreq.Headers.Host = $"127.0.0.1:{job.SOAP}";
                 fakeahreq.Headers.ConnectionClose = true;
-                client.DefaultRequestHeaders.ExpectContinue = Config.autistic;
+                client.DefaultRequestHeaders.ExpectContinue = false;
 
                 using var resp = await client.SendAsync(fakeahreq);
                 return Results.Json(new {message = "succeeded"});
