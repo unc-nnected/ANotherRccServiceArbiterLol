@@ -40,10 +40,10 @@ public class Program
             // parse config
             if (!Config.Parse(args))
                 throw new Exception("Error in the configuration!");
-            Logger.Print($"Access key read: {Config.FakeSECRET}");
+            Logger.Info($"Read settings key: {Config.FakeSECRET}");
             using var sha = SHA256.Create();
             var SECREThash = Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(Config.SECRET)));
-            Logger.Print($"Current Access key: {SECREThash}");
+            Logger.Info($"Current settings key: {SECREThash}");
             if (Config.debug)
             {
                 Logger.Info($"Loaded {Config.GSScript.Length} bytes from gameserver script");
@@ -77,7 +77,7 @@ public class Program
             throw new Exception(ex.ToString()); //Environment.Exit(1);
         }
 
-        Logger.Print("Service starting...");
+        Logger.Info("Service starting...");
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddRateLimiter(options =>
@@ -437,20 +437,20 @@ public class Program
             return Results.Json(job);
         }).RequireRateLimiting("strict"); // dont care honestly
 
-        Logger.Print("Intializing RCCService Pool");
+        Logger.RCCServiceInit("Intializing RCCService Pool");
         Helpers.runPoolManager();
         while (!Config.Ready)
             Thread.Sleep(100);
-        Logger.Print("Intializing ASP.NET Web Service");
+        Logger.NetworkAudit("Intializing ASP.NET Web Service");
         Helpers.StartGSM();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStarted.Register(() =>
         {
-            Logger.Print($"Service Started on port {Config.port}");
+            Logger.NetworkAudit($"Service Started on port {Config.port}");
         });
         lifetime.ApplicationStopping.Register(() =>
         {
-            Logger.Print("Service shutting down...");
+            Logger.NetworkAudit("Service shutting down...");
             Helpers.killallthefags();
         });
         app.Run($"http://0.0.0.0:{Config.port}");

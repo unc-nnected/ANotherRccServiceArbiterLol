@@ -185,7 +185,7 @@ static class Helpers
 
         if (!alive)
         {
-            if (Config.debug) Logger.Warn($"Failed to connect to port {port}. This process cannot be used");
+            if (Config.debug) Logger.Error($"Failed to connect to port {port}. This process cannot be used");
             try { if (!proc.HasExited) proc.Kill(true); } catch { }
             return null;
         }
@@ -321,7 +321,7 @@ static class Helpers
 
                 Monitor.Wait(PoolLock);
 
-                Logger.Warn("All jobs are busy. Spawning new RccService..");
+                Logger.RCCServiceInit("All jobs are busy. Spawning new RccService..");
 
                 Monitor.Exit(PoolLock);
 
@@ -389,17 +389,17 @@ static class Helpers
         {
             foreach (var kv in idle)
             {
-                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Info($"Disposing idle process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in pending)
             {
-                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Info($"Disposing pending process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
             foreach (var kv in active)
             {
-                Logger.Print($"Disposing process {kv.Value.Id} with port {kv.Key}");
+                Logger.Info($"Disposing active process {kv.Value.Id} with port {kv.Key}");
                 Kill(kv.Value);
             }
 
@@ -541,14 +541,14 @@ static class Helpers
             }
             catch (SocketException)
             {
-                Logger.Warn($"Chosen random port {((IPEndPoint)listener.LocalEndpoint).Port} is already in use");
+                Logger.RCCServiceInit($"Chosen random port {((IPEndPoint)listener.LocalEndpoint).Port} is already in use");
             }
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
             if (port >= 60000 && port <= 64989)
             {
                 listener.Stop();
                 if (Config.debug)
-                    Logger.Print($"Port {port} is chosen for the next RccServiceProcess.");
+                    Logger.RCCServiceInit($"Port {port} is chosen for the next RccServiceProcess.");
                 return port;
             }
         }
@@ -564,7 +564,7 @@ static class Helpers
             {
                 udp.Dispose();
                 if (Config.debug)
-                    Logger.Print($"Port {port} is chosen for the next GameServer.");
+                    Logger.RCCServiceInit($"Port {port} is chosen for the next GameServer.");
                 return port;
             }
         }
@@ -702,7 +702,7 @@ static class Helpers
 
             if (dedicatedCount >= MaxDedicated)
             {
-                Logger.Warn($"{dedicatedCount} dedicated RccService processes are active, using Pooled now");
+                Logger.RCCServiceInit($"{dedicatedCount} dedicated RccService processes are active, using Pooled now");
 
                 var kv = idle.FirstOrDefault();
 
@@ -826,7 +826,7 @@ static class Helpers
 
             if (!ready)
             {
-                Logger.Warn($"Failed to connect to port {port}.");
+                Logger.Error($"Failed to connect to port {port}.");
             }
 
             try
@@ -848,7 +848,7 @@ static class Helpers
                 }
                 catch { }
 
-                Logger.Print($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
+                Logger.RCCServiceInit($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
             }
             catch { }
 
@@ -981,7 +981,7 @@ static class Helpers
 
             if (lines.Length == 0)
             {
-                Logger.Error("Script is empty.");
+                Logger.RCCServiceJobs("Script is empty.");
                 return false;
             }
 
@@ -992,13 +992,13 @@ static class Helpers
 
             if (!valid)
             {
-                Logger.Error($"Script verification failed, please check your script signatures and try again (signature: {signatureLine})");
+                Logger.RCCServiceJobs($"Script verification failed, please check your script signatures and try again (signature: {signatureLine})");
                 return false;
             }
             else
             {
                 if (Config.debug)
-                    Logger.Print("Signature is valid");
+                    Logger.RCCServiceJobs("Signature is valid");
             }
 
             type = scriptContent;
@@ -1092,8 +1092,8 @@ static class Helpers
                     fixitup(value.Value.Trim(), out render);
                 } else
                 {
-                    Logger.Error("Render value wasn't found! ANRSAL doesn't support ASYNC renders yet.");
-                    Logger.Error("RccService's response: " + responseText);
+                    Logger.RCCServiceJobs("Render value wasn't found! ANRSAL doesn't support ASYNC renders yet.");
+                    Logger.RCCServiceJobs("RccService's response: " + responseText);
                     return false;
                 }
             }

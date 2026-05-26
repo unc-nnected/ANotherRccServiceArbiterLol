@@ -109,7 +109,7 @@ static class Config
         string finalSig = $"--anrsalsig%{reversed}%";
 
         if (debug)
-            Logger.Print($"Signed script with {finalSig}");
+            Logger.Info($"Signed script with {finalSig}");
 
         return finalSig;
     }
@@ -258,7 +258,7 @@ static class Config
                     break;
 
                 case "--debug": // debug mode (more information)
-                    Logger.Warn("--debug is deprecated, use --verbose");
+                    Logger.Error("--debug is deprecated, use --verbose");
                     debug = true;
                     break;
 
