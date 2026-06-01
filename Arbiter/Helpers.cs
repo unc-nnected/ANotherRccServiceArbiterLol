@@ -977,7 +977,9 @@ static class Helpers
 
         bool inIf = false;
         bool inElse = false;
+
         bool conditionResult = false;
+        bool branchMatched = false;
 
         foreach (var rawLine in lines)
         {
@@ -986,6 +988,7 @@ static class Helpers
             if (line.StartsWith("if ") && line.EndsWith(" then"))
             {
                 inIf = true;
+                inElse = false;
 
                 string condition = line.Substring(3, line.Length - 8).Trim();
 
@@ -997,14 +1000,37 @@ static class Helpers
                 string variableName = match.Groups[1].Value;
                 string expectedValue = match.Groups[2].Value.Trim();
 
-                if (variables.TryGetValue(variableName, out var actualValue))
-                {
-                    conditionResult = string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
-                }
-                else
+                conditionResult = variables.TryGetValue(variableName, out var actualValue) && string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
+                branchMatched = conditionResult;
+
+                continue;
+            }
+
+            if (line.StartsWith("elseif ") && line.EndsWith(" then"))
+            {
+                if (!inIf)
+                    throw new Exception("elseif without if");
+
+                if (branchMatched)
                 {
                     conditionResult = false;
+                    continue;
                 }
+
+                string condition = line.Substring(7, line.Length - 12).Trim();
+
+                var match = Regex.Match(condition, @"\{\%\{(.+?)\}\}\s*==\s*(.+)");
+
+                if (!match.Success)
+                    throw new Exception($"Bad condition: {condition}");
+
+                string variableName = match.Groups[1].Value;
+                string expectedValue = match.Groups[2].Value.Trim();
+
+                conditionResult = variables.TryGetValue(variableName, out var actualValue) && string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
+
+                if (conditionResult)
+                    branchMatched = true;
 
                 continue;
             }
@@ -1012,6 +1038,7 @@ static class Helpers
             if (line == "else")
             {
                 inElse = true;
+                conditionResult = !branchMatched;
                 continue;
             }
 
@@ -1020,6 +1047,7 @@ static class Helpers
                 inIf = false;
                 inElse = false;
                 conditionResult = false;
+                branchMatched = false;
                 continue;
             }
 
@@ -1029,12 +1057,7 @@ static class Helpers
                 continue;
             }
 
-            if (!inElse && conditionResult)
-            {
-                output.AppendLine(rawLine);
-            }
-
-            if (inElse && !conditionResult)
+            if (conditionResult)
             {
                 output.AppendLine(rawLine);
             }
