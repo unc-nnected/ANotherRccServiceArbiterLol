@@ -682,7 +682,6 @@ static class Helpers
                 PublicPort = GetGameServerPort();
 
             proxy = new ReverseProxy(PublicPort, GameServerPort);
-
             proxy.Start();
 
             if (Config.debug)

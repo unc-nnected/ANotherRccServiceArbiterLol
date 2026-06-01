@@ -29,7 +29,6 @@ static class Config
     public static bool realtime { get; private set; } = false;
     public static string name = "RCCService";
     public static bool signing { get; private set; } = false;
-    public static bool inject { get; private set; } = false;
     public static bool json { get; private set; } = false;
     public static bool poolgs { get; private set; } = false;
     public static bool service { get; private set; } = false;
@@ -299,10 +298,6 @@ static class Config
 
                 case "--sign": // enable signing scripts for security
                     signing = true;
-                    break;
-
-                case "--inject": // inject a script after spawning in new gameserver, its for JSON RCCServices because roblox sucks.
-                    inject = true;
                     break;
 
                 case "--json": // speak json for 2017L+ rccservices
