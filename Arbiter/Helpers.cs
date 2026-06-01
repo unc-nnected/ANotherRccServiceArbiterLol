@@ -11,6 +11,7 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 public sealed class ReverseProxy
@@ -968,6 +969,80 @@ static class Helpers
         }
     }
 
+    private static string ProcessConditionals(string template, Dictionary<string, string> variables)
+    {
+        // i really had to make my own programming language just to support json version of rccservice.. also this is really bad, but it works so who cares
+        var lines = template.Replace("\r\n", "\n").Split('\n');
+        var output = new StringBuilder();
+
+        bool inIf = false;
+        bool inElse = false;
+        bool conditionResult = false;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+
+            if (line.StartsWith("if ") && line.EndsWith(" then"))
+            {
+                inIf = true;
+
+                string condition = line.Substring(3, line.Length - 8).Trim();
+
+                var match = Regex.Match(condition, @"\{\%\{(.+?)\}\}\s*==\s*(.+)");
+
+                if (!match.Success)
+                    throw new Exception($"Bad condition: {condition}");
+
+                string variableName = match.Groups[1].Value;
+                string expectedValue = match.Groups[2].Value.Trim();
+
+                if (variables.TryGetValue(variableName, out var actualValue))
+                {
+                    conditionResult = string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    conditionResult = false;
+                }
+
+                continue;
+            }
+
+            if (line == "else")
+            {
+                inElse = true;
+                continue;
+            }
+
+            if (line == "end")
+            {
+                inIf = false;
+                inElse = false;
+                conditionResult = false;
+                continue;
+            }
+
+            if (!inIf)
+            {
+                output.AppendLine(rawLine);
+                continue;
+            }
+
+            if (!inElse && conditionResult)
+            {
+                output.AppendLine(rawLine);
+            }
+
+            if (inElse && !conditionResult)
+            {
+                output.AppendLine(rawLine);
+            }
+        }
+
+        return output.ToString();
+    }
+
     private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
     {
         render = null;
@@ -1007,6 +1082,18 @@ static class Helpers
             ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
 
+            var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["placeId"] = placeId.ToString(),
+                ["jobId"] = jobId,
+                ["port"] = fakeahport.ToString(),
+                ["accesskey"] = Config.AccessKey,
+                ["teamcreate"] = teamcreate.ToString().ToLower(),
+                ["isheadshot"] = headshot.ToString().ToLower(),
+                ["isclothing"] = isclothing.ToString().ToLower()
+            };
+
+            type = ProcessConditionals(type, variables);
             type = type.Replace("{placeId}", placeId.ToString());
             type = type.Replace("{jobId}", jobId);
             type = type.Replace("{port}", fakeahport.ToString());
