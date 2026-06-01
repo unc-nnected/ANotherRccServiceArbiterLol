@@ -75,7 +75,7 @@ static class Health
             LogicalProcessorCount = Environment.ProcessorCount;
             ProcessorCount = GetPhysicalCoreCount();
 
-            RccServiceProcesses = GetProcessCount(Config.name);
+            RccServiceProcesses = Process.GetProcessesByName(Config.name).Length;
             RccVersion = GetFirstMatchingProcessVersion(Config.name);
 
             ArbiterVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "IDK";
@@ -191,18 +191,6 @@ static class Health
         }
 
         return total;
-    }
-
-    private static int GetProcessCount(string containsName)
-    {
-        try
-        {
-            return Process.GetProcesses().Count(p => p.ProcessName.Contains(containsName, StringComparison.OrdinalIgnoreCase));
-        }
-        catch
-        {
-            return 0;
-        }
     }
 
     private static string? GetFirstMatchingProcessVersion(string containsName)
