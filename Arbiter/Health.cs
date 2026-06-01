@@ -214,7 +214,7 @@ static class Health
             if (proc is null)
                 return null;
 
-            return proc.MainModule?.FileVersionInfo?.ProductVersion;
+            return proc.MainModule?.FileVersionInfo?.FileVersion;
         }
         catch
         {
