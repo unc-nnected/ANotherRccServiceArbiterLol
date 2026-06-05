@@ -368,4 +368,4 @@ enum JobType
     Model,
     Mesh
 }
-public record ExecuteScript(string gameId, string scriptName, string arguments, string script);
+public record ExecuteScript(string gameId, string scriptName, object[] arguments, string script);
