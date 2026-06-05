@@ -389,7 +389,7 @@ public class Program
 
                 var soap = $@"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
 <soapenv:Body>
-    <rob:Execute>
+    <rob:ExecuteEx>
       <rob:jobID>{body.gameId}</rob:jobID>
       <rob:script>
         <rob:name>{body.scriptName}</rob:name>
@@ -398,7 +398,7 @@ public class Program
         ]]></rob:script>
         {arguments}
       </rob:script>
-    </rob:Execute>
+    </rob:ExecuteEx>
   </soapenv:Body>
 </soapenv:Envelope>";
 
