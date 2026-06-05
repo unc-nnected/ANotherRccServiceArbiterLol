@@ -319,6 +319,10 @@ static class Config
                 case "--reverseproxy": // reverse proxy for gameservers
                     fakeahReverseProxy = true;
                     break;
+
+                case "--forceready": // force ready
+                    Ready = true;
+                    break;
             }
         }
 
