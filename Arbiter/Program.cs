@@ -387,11 +387,7 @@ public class Program
                 ServicePointManager.Expect100Continue = false;
                 ServicePointManager.UseNagleAlgorithm = false;
 
-                var soap = "";
-
-                if (!Config.json)
-                {
-                    soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+                var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
   <soapenv:Body>
     <rob:Execute>
@@ -406,11 +402,6 @@ public class Program
     </rob:Execute>
   </soapenv:Body>
 </soapenv:Envelope>";
-                }
-                else
-                {
-                    soap = $@"{body.script}"; // thats literally it
-                }
 
                 using var fakeahreq = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{job.SOAP}/");
                 fakeahreq.Version = HttpVersion.Version11;
