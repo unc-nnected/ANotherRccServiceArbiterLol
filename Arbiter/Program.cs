@@ -387,9 +387,8 @@ public class Program
                 ServicePointManager.Expect100Continue = false;
                 ServicePointManager.UseNagleAlgorithm = false;
 
-                var soap = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
-  <soapenv:Body>
+                var soap = $@"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:rob=""http://{Config.BaseURL}/"">
+<soapenv:Body>
     <rob:Execute>
       <rob:jobID>{body.gameId}</rob:jobID>
       <rob:script>
@@ -397,8 +396,8 @@ public class Program
         <rob:script><![CDATA[
             {body.script}
         ]]></rob:script>
+        {arguments}
       </rob:script>
-    {arguments}
     </rob:Execute>
   </soapenv:Body>
 </soapenv:Envelope>";
@@ -408,7 +407,7 @@ public class Program
                 fakeahreq.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
                 fakeahreq.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(soap));
                 fakeahreq.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
-                fakeahreq.Headers.Add("SOAPAction", "Execute");
+                fakeahreq.Headers.Add("SOAPAction", "ExecuteScript");
                 fakeahreq.Headers.Host = $"127.0.0.1:{job.SOAP}";
                 fakeahreq.Headers.ConnectionClose = true;
                 client.DefaultRequestHeaders.ExpectContinue = false;
