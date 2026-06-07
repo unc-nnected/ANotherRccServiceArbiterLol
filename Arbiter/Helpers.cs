@@ -1066,23 +1066,25 @@ static class Helpers
         return true;
     }
 
-    private static bool EvaluateCondition(string condition, Dictionary<string, string> variables)
-    {
+    private static bool EvaluateCondition(string condition, Dictionary<string, object> variables){
         var match = Regex.Match(condition, @"^\{\%\{(.+?)\}\}\s*==\s*(.+)$");
+
         if (!match.Success)
             throw new Exception($"Bad condition: {condition}");
 
         string variableName = match.Groups[1].Value;
-        string expectedValue = match.Groups[2].Value.Trim();
+        string expectedRaw = match.Groups[2].Value.Trim();
 
-        if ((expectedValue.StartsWith("\"") && expectedValue.EndsWith("\"")) ||
-            (expectedValue.StartsWith("'") && expectedValue.EndsWith("'")))
+        if (!variables.TryGetValue(variableName, out var actualValue))
+            return false;
+
+        if (bool.TryParse(expectedRaw, out var expectedBool))
         {
-            expectedValue = expectedValue[1..^1];
+            if (actualValue is bool actualBool)
+                return actualBool == expectedBool;
         }
 
-        return variables.TryGetValue(variableName, out var actualValue) &&
-               string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(actualValue?.ToString(), expectedRaw, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
