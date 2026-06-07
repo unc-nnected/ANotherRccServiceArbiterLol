@@ -369,3 +369,11 @@ enum JobType
     Mesh
 }
 public record ExecuteScript(string gameId, string scriptName, object[] arguments, string script);
+
+public sealed class ConditionalFrame
+{
+    public bool ParentActive { get; init; }
+    public bool BranchMatched { get; set; }
+    public bool CurrentActive { get; set; }
+    public bool SeenElse { get; set; }
+}

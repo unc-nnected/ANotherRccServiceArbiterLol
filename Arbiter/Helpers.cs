@@ -971,99 +971,118 @@ static class Helpers
 
     private static string ProcessConditionals(string template, Dictionary<string, string> variables)
     {
-        // i really had to make my own programming language just to support json version of rccservice.. also this is really bad, but it works so who cares
         var lines = template.Replace("\r\n", "\n").Split('\n');
         var output = new StringBuilder();
-
-        bool inIf = false;
-        bool inElse = false;
-
-        bool conditionResult = false;
-        bool branchMatched = false;
+        var stack = new Stack<ConditionalFrame>();
 
         foreach (var rawLine in lines)
         {
             var line = rawLine.Trim();
 
-            if (line.StartsWith("if ") && line.EndsWith(" then"))
+            if (TryParseConditionalStart(line, "if", out var ifCondition))
             {
-                inIf = true;
-                inElse = false;
+                bool parentActive = stack.Count == 0 || stack.All(f => f.CurrentActive);
+                bool conditionResult = parentActive && EvaluateCondition(ifCondition, variables);
 
-                string condition = line.Substring(3, line.Length - 8).Trim();
-
-                var match = Regex.Match(condition, @"\{\%\{(.+?)\}\}\s*==\s*(.+)");
-
-                if (!match.Success)
-                    throw new Exception($"Bad condition: {condition}");
-
-                string variableName = match.Groups[1].Value;
-                string expectedValue = match.Groups[2].Value.Trim();
-
-                conditionResult = variables.TryGetValue(variableName, out var actualValue) && string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
-                branchMatched = conditionResult;
+                stack.Push(new ConditionalFrame
+                {
+                    ParentActive = parentActive,
+                    BranchMatched = conditionResult,
+                    CurrentActive = conditionResult
+                });
 
                 continue;
             }
 
-            if (line.StartsWith("elseif ") && line.EndsWith(" then"))
+            if (TryParseConditionalStart(line, "elseif", out var elseifCondition))
             {
-                if (!inIf)
+                if (stack.Count == 0)
                     throw new Exception("elseif without if");
 
-                if (branchMatched)
+                var frame = stack.Peek();
+
+                if (frame.SeenElse)
+                    throw new Exception("elseif after else");
+
+                if (frame.BranchMatched)
                 {
-                    conditionResult = false;
-                    continue;
+                    frame.CurrentActive = false;
                 }
-
-                string condition = line.Substring(7, line.Length - 12).Trim();
-
-                var match = Regex.Match(condition, @"\{\%\{(.+?)\}\}\s*==\s*(.+)");
-
-                if (!match.Success)
-                    throw new Exception($"Bad condition: {condition}");
-
-                string variableName = match.Groups[1].Value;
-                string expectedValue = match.Groups[2].Value.Trim();
-
-                conditionResult = variables.TryGetValue(variableName, out var actualValue) && string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
-
-                if (conditionResult)
-                    branchMatched = true;
+                else
+                {
+                    bool conditionResult = frame.ParentActive && EvaluateCondition(elseifCondition, variables);
+                    frame.CurrentActive = conditionResult;
+                    frame.BranchMatched |= conditionResult;
+                }
 
                 continue;
             }
 
             if (line == "else")
             {
-                inElse = true;
-                conditionResult = !branchMatched;
+                if (stack.Count == 0)
+                    throw new Exception("else without if");
+
+                var frame = stack.Peek();
+
+                if (frame.SeenElse)
+                    throw new Exception("multiple else blocks");
+
+                frame.SeenElse = true;
+                frame.CurrentActive = frame.ParentActive && !frame.BranchMatched;
+                frame.BranchMatched = true;
+
                 continue;
             }
 
             if (line == "end")
             {
-                inIf = false;
-                inElse = false;
-                conditionResult = false;
-                branchMatched = false;
+                if (stack.Count == 0)
+                    throw new Exception("end without if");
+
+                stack.Pop();
                 continue;
             }
 
-            if (!inIf)
-            {
+            bool shouldEmit = stack.Count == 0 || stack.All(f => f.CurrentActive);
+            if (shouldEmit)
                 output.AppendLine(rawLine);
-                continue;
-            }
-
-            if (conditionResult)
-            {
-                output.AppendLine(rawLine);
-            }
         }
 
+        if (stack.Count != 0)
+            throw new Exception("Unclosed if block(s)");
+
         return output.ToString();
+    }
+
+    private static bool TryParseConditionalStart(string line, string keyword, out string condition)
+    {
+        condition = null!;
+
+        if (!line.StartsWith(keyword + " ", StringComparison.Ordinal) || !line.EndsWith(" then", StringComparison.Ordinal))
+            return false;
+
+        condition = line.Substring(keyword.Length + 1, line.Length - (keyword.Length + 1) - 5).Trim();
+        return true;
+    }
+
+    private static bool EvaluateCondition(string condition, Dictionary<string, string> variables)
+    {
+        var match = Regex.Match(condition, @"^\{\%\{(.+?)\}\}\s*==\s*(.+)$");
+        if (!match.Success)
+            throw new Exception($"Bad condition: {condition}");
+
+        string variableName = match.Groups[1].Value;
+        string expectedValue = match.Groups[2].Value.Trim();
+
+        if ((expectedValue.StartsWith("\"") && expectedValue.EndsWith("\"")) ||
+            (expectedValue.StartsWith("'") && expectedValue.EndsWith("'")))
+        {
+            expectedValue = expectedValue[1..^1];
+        }
+
+        return variables.TryGetValue(variableName, out var actualValue) &&
+               string.Equals(actualValue, expectedValue, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
