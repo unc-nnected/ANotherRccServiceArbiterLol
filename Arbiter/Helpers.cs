@@ -969,7 +969,7 @@ static class Helpers
         }
     }
 
-    private static string ProcessConditionals(string template, Dictionary<string, string> variables)
+    private static string ProcessConditionals(string template, Dictionary<string, object> variables)
     {
         var lines = template.Replace("\r\n", "\n").Split('\n');
         var output = new StringBuilder();
@@ -1066,7 +1066,7 @@ static class Helpers
         return true;
     }
 
-    private static bool EvaluateCondition(string condition, Dictionary<string, object> variables){
+    private static bool EvaluateCondition(string condition, IReadOnlyDictionary<string, object?> variables) {
         var match = Regex.Match(condition, @"^\{\%\{(.+?)\}\}\s*==\s*(.+)$");
 
         if (!match.Success)
@@ -1075,16 +1075,16 @@ static class Helpers
         string variableName = match.Groups[1].Value;
         string expectedRaw = match.Groups[2].Value.Trim();
 
-        if (!variables.TryGetValue(variableName, out var actualValue))
+        if (!variables.TryGetValue(variableName, out var actual))
             return false;
 
-        if (bool.TryParse(expectedRaw, out var expectedBool))
+        if (actual is bool b &&
+            bool.TryParse(expectedRaw, out var expectedBool))
         {
-            if (actualValue is bool actualBool)
-                return actualBool == expectedBool;
+            return b == expectedBool;
         }
 
-        return string.Equals(actualValue?.ToString(), expectedRaw, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(Convert.ToString(actual), expectedRaw, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
@@ -1126,15 +1126,15 @@ static class Helpers
             ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
 
-            var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            var variables = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
-                ["placeId"] = placeId.ToString(),
+                ["placeId"] = placeId,
                 ["jobId"] = jobId,
-                ["port"] = fakeahport.ToString(),
+                ["port"] = fakeahport,
                 ["accesskey"] = Config.AccessKey,
-                ["teamcreate"] = teamcreate.ToString().ToLower(),
-                ["isheadshot"] = headshot.ToString().ToLower(),
-                ["isclothing"] = isclothing.ToString().ToLower()
+                ["teamcreate"] = teamcreate,
+                ["isheadshot"] = headshot,
+                ["isclothing"] = isclothing
             };
 
             type = ProcessConditionals(type, variables);
