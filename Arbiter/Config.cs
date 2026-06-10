@@ -34,6 +34,7 @@ static class Config
     public static bool service { get; private set; } = false;
     public static bool legacy { get; private set; } = false;
     public static bool fakeahReverseProxy { get; private set; } = false;
+    public static bool RefreshIDLERCCServices { get; private set; } = false;
 
     public static void ReloadScripts()
     {
@@ -322,6 +323,10 @@ static class Config
 
                 case "--forceready": // force ready
                     Ready = true;
+                    break;
+
+                case "--refreshidlerccservices": // restart idle rccservices every 5 minutes
+                    RefreshIDLERCCServices = true;
                     break;
             }
         }

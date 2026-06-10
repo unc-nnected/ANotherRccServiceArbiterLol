@@ -18,7 +18,6 @@ public sealed class ReverseProxy
 {
     private readonly UdpClient _listener;
     private readonly IPEndPoint _target;
-
     private readonly Dictionary<IPEndPoint, UdpClient> _clients = new();
 
     public ReverseProxy(int listen, int target)
@@ -113,7 +112,7 @@ static class Helpers
     {
         lock (PoolLock)
         {
-            if (_isFilling)
+            if (_isFilling || _isRefreshingIdle)
                 return;
 
             int current = howmuchRCCService();
@@ -410,12 +409,58 @@ static class Helpers
         }
     }
 
+    private static DateTime _lastIdleRefresh = DateTime.UtcNow;
+    private static bool _isRefreshingIdle;
+
     public static void runPoolManager()
     {
         _ = Task.Run(async () =>
         {
             while (true)
             {
+                if (Config.RefreshIDLERCCServices && DateTime.UtcNow - _lastIdleRefresh >= TimeSpan.FromMinutes(5))
+                {
+                    _isRefreshingIdle = true;
+
+                    List<(int Port, Process Proc)> toRefresh;
+
+                    lock (PoolLock)
+                    {
+                        toRefresh = idle
+                            .Select(x => (x.Key, x.Value))
+                            .ToList();
+
+                        foreach (var (Port, Proc) in toRefresh)
+                            idle.Remove(Port);
+
+                        _lastIdleRefresh = DateTime.UtcNow;
+                    }
+
+                    foreach (var (port, proc) in toRefresh)
+                    {
+                        try
+                        {
+                            proc?.Kill();
+                            proc?.Dispose();
+                        }
+                        catch
+                        {
+                        }
+
+                        var newProc = startPending(port);
+
+                        if (newProc != null)
+                        {
+                            lock (PoolLock)
+                            {
+                                idle[port] = newProc;
+                            }
+                        }
+                    }
+
+                    _isRefreshingIdle = false;
+                }
+
                 keepPoolsFull();
 
                 bool ready;
