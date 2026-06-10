@@ -211,7 +211,7 @@ static class Helpers
 
     private static (Process? proc, int port) startDedicatedRCCService()
     {
-        int port = GetPort();
+        int port = GetPort(50000, 52999);
         var proc = RCCService(port);
         if (proc == null) return (null, 0);
 
@@ -299,7 +299,7 @@ static class Helpers
 
                 if (howmuchRCCService() < TargetPool)
                 {
-                    int port = GetPort();
+                    int port = GetPort(50000, 52999);
                     pending[port] = null!;
 
                     Monitor.Exit(PoolLock);
@@ -325,7 +325,7 @@ static class Helpers
 
                 Monitor.Exit(PoolLock);
 
-                int pport = GetPort();
+                int pport = GetPort(50000, 52999);
                 var pproc = RCCService(pport);
 
                 if (pproc == null)
@@ -576,7 +576,7 @@ static class Helpers
         return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(token), Encoding.UTF8.GetBytes(expected));
     }
 
-    public static int GetPort()
+    public static int GetPort(int first = 50000, int second = 52999)
     {
         while (true)
         {
@@ -590,7 +590,7 @@ static class Helpers
                 Logger.RCCServiceInit($"Chosen random port {((IPEndPoint)listener.LocalEndpoint).Port} is already in use");
             }
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            if (port >= 60000 && port <= 64989)
+            if (port >= first && port <= second)
             {
                 listener.Stop();
                 if (Config.debug)
@@ -600,17 +600,17 @@ static class Helpers
         }
     }
 
-    public static int GetGameServerPort()
+    public static int GetGameServerPort(int first = 40000, int second = 59999)
     {
         while (true)
         {
             using var udp = new UdpClient(0);
             int port = ((IPEndPoint)udp.Client.LocalEndPoint).Port;
-            if (port >= 40000 && port <= 59999)
+            if (port >= first && port <= second)
             {
                 udp.Dispose();
                 if (Config.debug)
-                    Logger.RCCServiceInit($"Port {port} is chosen for the next GameServer.");
+                    Logger.RCCServiceInit($"Port {port} is chosen for the next GameServer or Proxy.");
                 return port;
             }
         }
@@ -715,14 +715,14 @@ static class Helpers
     public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        int GameServerPort = GetGameServerPort();
+        int GameServerPort = GetGameServerPort(55998, 58997);
         int PublicPort = GameServerPort;
 
         ReverseProxy? proxy = null;
 
         if (Config.fakeahReverseProxy)
         {
-            PublicPort = GetGameServerPort();
+            PublicPort = GetGameServerPort(61996, 64995);
 
             while (PublicPort == GameServerPort)
                 PublicPort = GetGameServerPort();
