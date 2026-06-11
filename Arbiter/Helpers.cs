@@ -187,7 +187,7 @@ static class Helpers
                         if (howmuchRCCService() >= TargetPool)
                             break;
 
-                        port = GetPort();
+                        port = GetPort(27280, 30919);
                         pending[port] = null!;
                     }
 
@@ -263,7 +263,7 @@ static class Helpers
 
     private static (Process? proc, int port) startDedicatedRCCService()
     {
-        int port = GetPort(50000, 52999);
+        int port = GetPort(27280, 30919);
         var proc = RCCService(port);
         if (proc == null) return (null, 0);
 
@@ -350,7 +350,7 @@ static class Helpers
 
                 if (howmuchRCCService() < TargetPool)
                 {
-                    int port = GetPort(50000, 52999);
+                    int port = GetPort(27280, 30919);
                     pending[port] = null!;
 
                     Monitor.Exit(PoolLock);
@@ -376,7 +376,7 @@ static class Helpers
 
                 Monitor.Exit(PoolLock);
 
-                int pport = GetPort(50000, 52999);
+                int pport = GetPort(27280, 30919);
                 var pproc = RCCService(pport);
 
                 if (pproc == null)
@@ -726,17 +726,17 @@ static class Helpers
     public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        int GameServerPort = GetGameServerPort(55998, 58997);
+        int GameServerPort = GetGameServerPort(23640, 27279);
         int PublicPort = GameServerPort;
 
         ReverseProxy? proxy = null;
 
         if (Config.fakeahReverseProxy)
         {
-            PublicPort = GetGameServerPort(61996, 64995);
+            PublicPort = GetGameServerPort(20000, 23639);
 
             while (PublicPort == GameServerPort)
-                PublicPort = GetGameServerPort();
+                PublicPort = GetGameServerPort(20000, 23639);
 
             proxy = new ReverseProxy(PublicPort, GameServerPort);
             proxy.Start();
