@@ -268,6 +268,7 @@ public class Program
 
             var response = new
             {
+                status = healthy ? "normal" : "stressed",
                 PhysicalMemoryGigabytesUsage = MathF.Round(ram, 1),
                 availablePhysicalMemoryGigabytes = MathF.Round(Health.AvailablePhysicalMemoryGigabytes, 2),
                 totalPhysicalMemoryGigabytes = MathF.Round(Health.TotalPhysicalMemoryGigabytes, 2),
@@ -278,9 +279,8 @@ public class Program
                 processorCount = Health.ProcessorCount,
                 rccServiceProcesses = Health.RccServiceProcesses,
                 rccVersion = Health.RccVersion,
-                rccPools = new[] { $"idle.{Helpers.idle.Count}", $"pending.{Helpers.pending.Count}", $"active.{Helpers.active.Count}" },
                 arbiterVersion = Health.ArbiterVersion
-        };
+            };
 
             return Results.Json(response);
         }).RequireRateLimiting("unstrict");
@@ -436,9 +436,11 @@ public class Program
             return Results.Json(job);
         }).RequireRateLimiting("strict"); // dont care honestly
 
+        Logger.RCCServiceInit("Intializing RCCService Pool");
         Helpers.runPoolManager();
         while (!Config.Ready)
             Thread.Sleep(100);
+        Logger.NetworkAudit("Intializing ASP.NET Web Service");
         Helpers.StartGSM();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStarted.Register(() =>

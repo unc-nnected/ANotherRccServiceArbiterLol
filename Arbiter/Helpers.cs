@@ -90,9 +90,9 @@ static class Helpers
     private static bool _gsmStarted;
     private static readonly object PoolLock = new();
     private static readonly int TargetPool = 5;
-    public static readonly Dictionary<int, Process> idle = new();
-    public static readonly Dictionary<int, Process> pending = new();
-    public static readonly Dictionary<int, Process> active = new();
+    private static readonly Dictionary<int, Process> idle = new();
+    private static readonly Dictionary<int, Process> pending = new();
+    private static readonly Dictionary<int, Process> active = new();
     private static bool _isFilling;
     private static readonly HttpClient client = new HttpClient
     {
@@ -130,8 +130,6 @@ static class Helpers
         {
             try
             {
-                Logger.RCCServiceInit("Intializing RCCService Pool");
-
                 while (true)
                 {
                     if (Config.RefreshIDLERCCServices && DateTime.UtcNow - _lastIdleRefresh >= TimeSpan.FromMinutes(5))
@@ -189,7 +187,7 @@ static class Helpers
                         if (howmuchRCCService() >= TargetPool)
                             break;
 
-                        port = GetPort(60000, 65535);
+                        port = GetPort();
                         pending[port] = null!;
                     }
 
@@ -265,7 +263,7 @@ static class Helpers
 
     private static (Process? proc, int port) startDedicatedRCCService()
     {
-        int port = GetPort(60000, 65535);
+        int port = GetPort(50000, 52999);
         var proc = RCCService(port);
         if (proc == null) return (null, 0);
 
@@ -352,7 +350,7 @@ static class Helpers
 
                 if (howmuchRCCService() < TargetPool)
                 {
-                    int port = GetPort(60000, 65535);
+                    int port = GetPort(50000, 52999);
                     pending[port] = null!;
 
                     Monitor.Exit(PoolLock);
@@ -378,7 +376,7 @@ static class Helpers
 
                 Monitor.Exit(PoolLock);
 
-                int pport = GetPort(60000, 65535);
+                int pport = GetPort(50000, 52999);
                 var pproc = RCCService(pport);
 
                 if (pproc == null)
@@ -539,8 +537,6 @@ static class Helpers
     }
     public static void StartGSM()
     {
-        Logger.NetworkAudit("Intializing ASP.NET Web Service");
-
         lock (JobsLock)
         {
             if (_gsmStarted)
@@ -730,17 +726,17 @@ static class Helpers
     public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        int GameServerPort = GetGameServerPort(50000, 59999);
+        int GameServerPort = GetGameServerPort(55998, 58997);
         int PublicPort = GameServerPort;
 
         ReverseProxy? proxy = null;
 
         if (Config.fakeahReverseProxy)
         {
-            PublicPort = GetGameServerPort(20000, 40000);
+            PublicPort = GetGameServerPort(61996, 64995);
 
             while (PublicPort == GameServerPort)
-                PublicPort = GetGameServerPort(20000, 40000);
+                PublicPort = GetGameServerPort();
 
             proxy = new ReverseProxy(PublicPort, GameServerPort);
             proxy.Start();
