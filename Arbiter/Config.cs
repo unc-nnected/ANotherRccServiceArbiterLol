@@ -32,6 +32,7 @@ static class Config
     public static bool json { get; private set; } = false;
     public static bool poolgs { get; private set; } = false;
     public static bool service { get; private set; } = false;
+    public static bool ForceReady { get; private set; } = false;
     public static bool legacy { get; private set; } = false;
     public static bool fakeahReverseProxy { get; private set; } = false;
     public static bool RefreshIDLERCCServices { get; private set; } = false;
@@ -322,6 +323,7 @@ static class Config
                     break;
 
                 case "--forceready": // force ready
+                    ForceReady = true;
                     Ready = true;
                     break;
 

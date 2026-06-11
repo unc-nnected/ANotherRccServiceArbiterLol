@@ -132,37 +132,48 @@ static class Helpers
                     {
                         _isRefreshingIdle = true;
 
-                        List<(int Port, Process Proc)> toRefresh;
-
-                        lock (PoolLock)
+                        try
                         {
-                            toRefresh = idle
-                                .Select(x => (x.Key, x.Value))
-                                .ToList();
+                            List<(int Port, Process Proc)> toRefresh;
 
-                            foreach (var (Port, Proc) in toRefresh)
-                                idle.Remove(Port);
-
-                            _lastIdleRefresh = DateTime.UtcNow;
-                        }
-
-                        foreach (var (Port, Proc) in toRefresh)
-                        {
-
-                            KillbyID(Proc.Id);
-
-                            var newProc = startPending(Proc.Id);
-
-                            if (newProc != null)
+                            lock (PoolLock)
                             {
+                                toRefresh = idle
+                                    .Select(x => (x.Key, x.Value))
+                                    .ToList();
+
+                                _lastIdleRefresh = DateTime.UtcNow;
+                            }
+
+                            foreach (var (Port, oldProc) in toRefresh)
+                            {
+                                var newProc = startPending(Port);
+
+                                if (newProc == null)
+                                    continue;
+
+                                if (!AwaitRCCService(Port, 5000))
+                                {
+                                    KillbyID(newProc.Id);
+                                    continue;
+                                }
+
                                 lock (PoolLock)
                                 {
-                                    idle[Port] = newProc;
+                                    if (idle.TryGetValue(Port, out var currentProc) &&
+                                        currentProc.Id == oldProc.Id)
+                                    {
+                                        idle[Port] = newProc;
+                                    }
                                 }
+
+                                KillbyID(oldProc.Id);
                             }
                         }
-
-                        _isRefreshingIdle = false;
+                        finally
+                        {
+                            _isRefreshingIdle = false;
+                        }
                     }
 
                     int port;
@@ -463,11 +474,13 @@ static class Helpers
 
                 lock (PoolLock)
                 {
-                    int total = active.Count + idle.Count;
+                    int usable = active.Count + idle.Count;
 
-                    if (total < TargetPool || pending.Count > 0)
+                    if (usable < TargetPool)
                     {
-                        Config.Ready = false;
+                        if (!Config.ForceReady)
+                            Config.Ready = false;
+
                         goto Sleep;
                     }
 
