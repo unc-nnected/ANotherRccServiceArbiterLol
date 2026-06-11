@@ -130,6 +130,8 @@ static class Helpers
         {
             try
             {
+                Logger.RCCServiceInit("Intializing RCCService Pool");
+
                 while (true)
                 {
                     if (Config.RefreshIDLERCCServices && DateTime.UtcNow - _lastIdleRefresh >= TimeSpan.FromMinutes(5))
@@ -187,7 +189,7 @@ static class Helpers
                         if (howmuchRCCService() >= TargetPool)
                             break;
 
-                        port = GetPort(27280, 30919);
+                        port = GetPort(60000, 65535);
                         pending[port] = null!;
                     }
 
@@ -263,7 +265,7 @@ static class Helpers
 
     private static (Process? proc, int port) startDedicatedRCCService()
     {
-        int port = GetPort(27280, 30919);
+        int port = GetPort(60000, 65535);
         var proc = RCCService(port);
         if (proc == null) return (null, 0);
 
@@ -350,7 +352,7 @@ static class Helpers
 
                 if (howmuchRCCService() < TargetPool)
                 {
-                    int port = GetPort(27280, 30919);
+                    int port = GetPort(60000, 65535);
                     pending[port] = null!;
 
                     Monitor.Exit(PoolLock);
@@ -376,7 +378,7 @@ static class Helpers
 
                 Monitor.Exit(PoolLock);
 
-                int pport = GetPort(27280, 30919);
+                int pport = GetPort(60000, 65535);
                 var pproc = RCCService(pport);
 
                 if (pproc == null)
@@ -537,6 +539,8 @@ static class Helpers
     }
     public static void StartGSM()
     {
+        Logger.NetworkAudit("Intializing ASP.NET Web Service");
+
         lock (JobsLock)
         {
             if (_gsmStarted)
@@ -726,17 +730,17 @@ static class Helpers
     public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        int GameServerPort = GetGameServerPort(23640, 27279);
+        int GameServerPort = GetGameServerPort(50000, 59999);
         int PublicPort = GameServerPort;
 
         ReverseProxy? proxy = null;
 
         if (Config.fakeahReverseProxy)
         {
-            PublicPort = GetGameServerPort(20000, 23639);
+            PublicPort = GetGameServerPort(20000, 40000);
 
             while (PublicPort == GameServerPort)
-                PublicPort = GetGameServerPort(20000, 23639);
+                PublicPort = GetGameServerPort(20000, 40000);
 
             proxy = new ReverseProxy(PublicPort, GameServerPort);
             proxy.Start();

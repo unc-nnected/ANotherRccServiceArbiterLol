@@ -436,11 +436,9 @@ public class Program
             return Results.Json(job);
         }).RequireRateLimiting("strict"); // dont care honestly
 
-        Logger.RCCServiceInit("Intializing RCCService Pool");
         Helpers.runPoolManager();
         while (!Config.Ready)
             Thread.Sleep(100);
-        Logger.NetworkAudit("Intializing ASP.NET Web Service");
         Helpers.StartGSM();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         lifetime.ApplicationStarted.Register(() =>
