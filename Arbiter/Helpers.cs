@@ -286,6 +286,7 @@ static class Helpers
         if (!Config.json)
         {
             script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
+            try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
         } else
         {
             /*var payload = new
@@ -307,10 +308,8 @@ static class Helpers
             };
 
             script = JsonSerializer.Serialize(payload);*/
-            script = "{}"; // we dont know how to warm up so
+            script = ""; // we dont know how to warm up so
         }
-
-        try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
 
         lock (PoolLock)
         {
