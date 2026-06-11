@@ -110,6 +110,10 @@ static class Helpers
 
     private static void keepPoolsFull()
     {
+
+        if (Config.debug)
+            Logger.NetworkAudit($"READY={Config.Ready} active={active.Count} idle={idle.Count} pending={pending.Count}");
+
         lock (PoolLock)
         {
             if (_isFilling || _isRefreshingIdle)
@@ -270,7 +274,7 @@ static class Helpers
         bool alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            if (!AwaitRCCService(port, 5000)) {
+            if (AwaitRCCService(port, 5000)) {
                 alive = true;
                 break;
             }
