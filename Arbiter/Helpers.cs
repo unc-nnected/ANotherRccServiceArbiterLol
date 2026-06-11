@@ -128,6 +128,43 @@ static class Helpers
             {
                 while (true)
                 {
+                    if (Config.RefreshIDLERCCServices && DateTime.UtcNow - _lastIdleRefresh >= TimeSpan.FromMinutes(5))
+                    {
+                        _isRefreshingIdle = true;
+
+                        List<(int Port, Process Proc)> toRefresh;
+
+                        lock (PoolLock)
+                        {
+                            toRefresh = idle
+                                .Select(x => (x.Key, x.Value))
+                                .ToList();
+
+                            foreach (var (Port, Proc) in toRefresh)
+                                idle.Remove(Port);
+
+                            _lastIdleRefresh = DateTime.UtcNow;
+                        }
+
+                        foreach (var (Port, Proc) in toRefresh)
+                        {
+
+                            KillbyID(Proc.Id);
+
+                            var newProc = startPending(Proc.Id);
+
+                            if (newProc != null)
+                            {
+                                lock (PoolLock)
+                                {
+                                    idle[Port] = newProc;
+                                }
+                            }
+                        }
+
+                        _isRefreshingIdle = false;
+                    }
+
                     int port;
 
                     lock (PoolLock)
@@ -418,48 +455,6 @@ static class Helpers
         {
             while (true)
             {
-                if (Config.RefreshIDLERCCServices && DateTime.UtcNow - _lastIdleRefresh >= TimeSpan.FromMinutes(5))
-                {
-                    _isRefreshingIdle = true;
-
-                    List<(int Port, Process Proc)> toRefresh;
-
-                    lock (PoolLock)
-                    {
-                        toRefresh = idle
-                            .Select(x => (x.Key, x.Value))
-                            .ToList();
-
-                        foreach (var (Port, Proc) in toRefresh)
-                            idle.Remove(Port);
-
-                        _lastIdleRefresh = DateTime.UtcNow;
-                    }
-
-                    foreach (var (port, proc) in toRefresh)
-                    {
-                        try
-                        {
-                            proc?.Kill();
-                            proc?.Dispose();
-                        }
-                        catch
-                        {
-                        }
-
-                        var newProc = startPending(port);
-
-                        if (newProc != null)
-                        {
-                            lock (PoolLock)
-                            {
-                                idle[port] = newProc;
-                            }
-                        }
-                    }
-
-                    _isRefreshingIdle = false;
-                }
 
                 keepPoolsFull();
 
@@ -766,7 +761,7 @@ static class Helpers
             }
             else
             {
-                if (Config.poolgs)
+                if (!Config.poolgs) // last one fucking second in my private lobby pal..
                 {
                     (proc, SOAPPort) = startDedicatedRCCService();
                 }
