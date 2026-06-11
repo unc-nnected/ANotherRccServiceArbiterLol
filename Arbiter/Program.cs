@@ -268,7 +268,6 @@ public class Program
 
             var response = new
             {
-                status = healthy ? "normal" : "stressed",
                 PhysicalMemoryGigabytesUsage = MathF.Round(ram, 1),
                 availablePhysicalMemoryGigabytes = MathF.Round(Health.AvailablePhysicalMemoryGigabytes, 2),
                 totalPhysicalMemoryGigabytes = MathF.Round(Health.TotalPhysicalMemoryGigabytes, 2),
@@ -279,8 +278,9 @@ public class Program
                 processorCount = Health.ProcessorCount,
                 rccServiceProcesses = Health.RccServiceProcesses,
                 rccVersion = Health.RccVersion,
+                rccPools = new[] { $"idle.{Helpers.idle.Count}", $"pending.{Helpers.pending.Count}", $"active.{Helpers.active.Count}" },
                 arbiterVersion = Health.ArbiterVersion
-            };
+        };
 
             return Results.Json(response);
         }).RequireRateLimiting("unstrict");
