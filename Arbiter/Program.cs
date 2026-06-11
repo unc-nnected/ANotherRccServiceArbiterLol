@@ -278,7 +278,6 @@ public class Program
                 processorCount = Health.ProcessorCount,
                 rccServiceProcesses = Health.RccServiceProcesses,
                 rccVersion = Health.RccVersion,
-                rccPools = new[] { $"idle.{Helpers.idle.Count}", $"pending.{Helpers.pending.Count}", $"active.{Helpers.active.Count}" },
                 arbiterVersion = Health.ArbiterVersion
         };
 

@@ -90,9 +90,9 @@ static class Helpers
     private static bool _gsmStarted;
     private static readonly object PoolLock = new();
     private static readonly int TargetPool = 5;
-    public static readonly Dictionary<int, Process> idle = new();
-    public static readonly Dictionary<int, Process> pending = new();
-    public static readonly Dictionary<int, Process> active = new();
+    private static readonly Dictionary<int, Process> idle = new();
+    private static readonly Dictionary<int, Process> pending = new();
+    private static readonly Dictionary<int, Process> active = new();
     private static bool _isFilling;
     private static readonly HttpClient client = new HttpClient
     {
