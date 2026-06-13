@@ -16,24 +16,74 @@ using System.Xml.Linq;
 
 public sealed class ReverseProxy
 {
+    private static readonly Dictionary<int, ReverseProxy> _instances = new();
+
     private readonly UdpClient _listener;
     private readonly IPEndPoint _target;
     private readonly Dictionary<IPEndPoint, UdpClient> _clients = new();
 
+    private bool _running;
+
+    public int ListenPort { get; }
+
     public ReverseProxy(int listen, int target)
     {
-        _listener = new UdpClient(listen);
-        _target = new IPEndPoint(IPAddress.Parse("127.0.0.1"), target);
+        ListenPort = listen;
+
+        _listener = new UdpClient(AddressFamily.InterNetworkV6);
+        _listener.Client.DualMode = true;
+        _listener.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, listen));
+
+        _target = new IPEndPoint(IPAddress.Loopback, target);
     }
 
     public void Start()
     {
+        if (_running)
+            return;
+
+        _running = true;
+
+        lock (_instances)
+            _instances[ListenPort] = this;
+
         _ = Task.Run(RunAsync);
+    }
+
+    public void Stop()
+    {
+        _running = false;
+
+        lock (_instances)
+            _instances.Remove(ListenPort);
+
+        try { _listener.Close(); } catch { }
+
+        foreach (var client in _clients.Values)
+        {
+            try { client.Close(); } catch { }
+        }
+
+        _clients.Clear();
+    }
+
+    public static bool Stop(int listenPort)
+    {
+        ReverseProxy? proxy;
+
+        lock (_instances)
+            _instances.TryGetValue(listenPort, out proxy);
+
+        if (proxy == null)
+            return false;
+
+        proxy.Stop();
+        return true;
     }
 
     private async Task RunAsync()
     {
-        while (true)
+        while (_running)
         {
             UdpReceiveResult result;
 
@@ -43,6 +93,9 @@ public sealed class ReverseProxy
             }
             catch
             {
+                if (!_running)
+                    break;
+
                 continue;
             }
 
@@ -66,7 +119,7 @@ public sealed class ReverseProxy
 
     private async Task HandleServerTraffic(IPEndPoint client, UdpClient serverSocket)
     {
-        while (true)
+        while (_running)
         {
             try
             {
@@ -100,7 +153,7 @@ static class Helpers
         Timeout = Timeout.InfiniteTimeSpan
     };
     private static readonly Dictionary<int, int> usage = new();
-    private const int MaxJobs = 1; // this is needed for avatars so particles dont break in renders (not showing up at all)
+    private const int MaxJobs = 2; // this is needed for avatars so particles dont break in renders (not showing up at all)
     private static readonly HashSet<int> dedicated = new();
     private const int MaxDedicated = 2;
 
@@ -244,22 +297,6 @@ static class Helpers
             return null;
         }
 
-        try
-        {
-            string? tmp; string script;
-
-            if (!Config.json)
-            {
-                script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
-                SOAP(Guid.NewGuid().ToString(), port, 0, script, 10, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
-            }
-            else
-            {
-                // again, we dont have a way to know if rccservices alive, so pretend that it is
-            }
-        }
-        catch { }
-
         return proc;
     }
 
@@ -283,37 +320,6 @@ static class Helpers
             }
         }
         if (!alive) { Kill(proc); return (null, 0); }
-
-        string script;
-
-        if (!Config.json)
-        {
-            script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
-            try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
-        }
-        else
-        {
-            /*var payload = new
-            {
-                Mode = "Thumbnail",
-                Settings = new
-                {
-                    Type = "Model",
-                    PlaceId = 67,
-                    UserId = 67,
-                    BaseUrl = Config.BaseURL,
-                    MatchmakingContextId = 1,
-                    Arguments = new object[] { $"http://www.{Config.BaseURL}/asset/?id=67", "PNG", 420, 420, "http://www.{Config.BaseURL}" } // idk how to make it not guess that its www
-                },
-                Arguments = new
-                {
-                    MachineAddress = "127.0.0.1"
-                }
-            };
-
-            script = JsonSerializer.Serialize(payload);*/
-            script = ""; // we dont know how to warm up so
-        }
 
         lock (PoolLock)
         {
@@ -890,28 +896,7 @@ static class Helpers
                 Logger.Error($"Failed to connect to port {port}.");
             }
 
-            try
-            {
-                try
-                {
-                    string? tmp;
-                    string script;
-
-                    if (!Config.json)
-                    {
-                        script = "return true";
-                        SOAP(Guid.NewGuid().ToString(), port, 0, script, 5, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx");
-                    }
-                    else
-                    {
-                        // we dont have a way to know if rccservice's alive other than HelloWorld, which im not making a different function for it, so, for now, just pretend that RCCService is alive.
-                    }
-                }
-                catch { }
-
-                Logger.RCCServiceInit($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
-            }
-            catch { }
+             Logger.RCCServiceInit($"Started RccService process. Process ID = {proc.Id}, Port = {port}");
 
             return proc;
         }

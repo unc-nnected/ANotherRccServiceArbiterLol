@@ -249,6 +249,7 @@ public class Program
             {
                 job.Alive = false;
                 Helpers.RemoveJob(job.JobId);
+                ReverseProxy.Stop(job.Port); // stop the reverse proxy as well
 
                 if (Config.debug)
                     Logger.Info($"Killed {job.JobId} (pid={req.pid}, port={job.Port})");
