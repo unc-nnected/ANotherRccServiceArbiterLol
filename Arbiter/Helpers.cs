@@ -60,11 +60,12 @@ public sealed class ReverseProxy
             {
                 await server.SendAsync(result.Buffer, result.Buffer.Length, _target);
             }
-            catch {}
+            catch { }
         }
     }
 
-    private async Task HandleServerTraffic(IPEndPoint client, UdpClient serverSocket) {
+    private async Task HandleServerTraffic(IPEndPoint client, UdpClient serverSocket)
+    {
         while (true)
         {
             try
@@ -99,7 +100,7 @@ static class Helpers
         Timeout = Timeout.InfiniteTimeSpan
     };
     private static readonly Dictionary<int, int> usage = new();
-    private const int MaxJobs = 5; // this is needed for avatars so particles dont break in renders (not showing up at all)
+    private const int MaxJobs = 1; // this is needed for avatars so particles dont break in renders (not showing up at all)
     private static readonly HashSet<int> dedicated = new();
     private const int MaxDedicated = 2;
 
@@ -187,7 +188,7 @@ static class Helpers
                         if (howmuchRCCService() >= TargetPool)
                             break;
 
-                        port = GetPort();
+                        port = GetPort(60000, 65535);
                         pending[port] = null!;
                     }
 
@@ -229,7 +230,8 @@ static class Helpers
         var alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            if (AwaitRCCService(port, 5000)) {
+            if (AwaitRCCService(port, 5000))
+            {
                 alive = true;
                 break;
             }
@@ -256,14 +258,14 @@ static class Helpers
                 // again, we dont have a way to know if rccservices alive, so pretend that it is
             }
         }
-        catch {}
+        catch { }
 
         return proc;
     }
 
     private static (Process? proc, int port) startDedicatedRCCService()
     {
-        int port = GetPort(50000, 52999);
+        int port = GetPort(60000, 65535);
         var proc = RCCService(port);
         if (proc == null) return (null, 0);
 
@@ -274,7 +276,8 @@ static class Helpers
         bool alive = false;
         for (int i = 0; i < attempts; i++)
         {
-            if (AwaitRCCService(port, 5000)) {
+            if (AwaitRCCService(port, 5000))
+            {
                 alive = true;
                 break;
             }
@@ -287,7 +290,8 @@ static class Helpers
         {
             script = "Instance.new('Part', workspace) game:GetService('RunService'):Run()";
             try { string? tmp; SOAP(Guid.NewGuid().ToString(), port, 0, script, 2, 0, out tmp, enforceSigning: false, jobtype: "BatchJobEx"); } catch { } // we probably dont need to render if were just starting a gameserver.. just run physics
-        } else
+        }
+        else
         {
             /*var payload = new
             {
@@ -350,7 +354,7 @@ static class Helpers
 
                 if (howmuchRCCService() < TargetPool)
                 {
-                    int port = GetPort(50000, 52999);
+                    int port = GetPort(60000, 65535);
                     pending[port] = null!;
 
                     Monitor.Exit(PoolLock);
@@ -376,7 +380,7 @@ static class Helpers
 
                 Monitor.Exit(PoolLock);
 
-                int pport = GetPort(50000, 52999);
+                int pport = GetPort(60000, 65535);
                 var pproc = RCCService(pport);
 
                 if (pproc == null)
@@ -389,7 +393,8 @@ static class Helpers
                 bool alive = false;
                 for (int i = 0; i < 10; i++)
                 {
-                    if (AwaitRCCService(pport, 5000)) {
+                    if (AwaitRCCService(pport, 5000))
+                    {
                         alive = true;
                         break;
                     }
@@ -634,7 +639,7 @@ static class Helpers
         if (proc == null) return false;
         int pid = proc.Id;
 
-        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 120, 2, out render, jobtype: "BatchJobEx")) 
+        if (!SOAP(jobId, SOAPPort, placeId, Config.RScript, 120, 2, out render, jobtype: "BatchJobEx"))
         {
             Kill(proc);
             return false;
@@ -726,17 +731,17 @@ static class Helpers
     public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
     {
         render = null;
-        int GameServerPort = GetGameServerPort(55998, 58997);
+        int GameServerPort = GetGameServerPort(40000, 59999);
         int PublicPort = GameServerPort;
 
         ReverseProxy? proxy = null;
 
         if (Config.fakeahReverseProxy)
         {
-            PublicPort = GetGameServerPort(61996, 64995);
+            PublicPort = GetGameServerPort(30000, 49999);
 
             while (PublicPort == GameServerPort)
-                PublicPort = GetGameServerPort();
+                PublicPort = GetGameServerPort(30000, 49999);
 
             proxy = new ReverseProxy(PublicPort, GameServerPort);
             proxy.Start();
@@ -1122,7 +1127,8 @@ static class Helpers
         return true;
     }
 
-    private static bool EvaluateCondition(string condition, IReadOnlyDictionary<string, object?> variables) {
+    private static bool EvaluateCondition(string condition, IReadOnlyDictionary<string, object?> variables)
+    {
         var match = Regex.Match(condition, @"^\{\%\{(.+?)\}\}\s*==\s*(.+)$");
 
         if (!match.Success)
@@ -1276,7 +1282,8 @@ static class Helpers
                 if (value != null)
                 {
                     fixitup(value.Value.Trim(), out render);
-                } else
+                }
+                else
                 {
                     Logger.RCCServiceJobs("Render value wasn't found! ANRSAL doesn't support ASYNC renders yet.");
                     Logger.RCCServiceJobs("RccService's response: " + responseText);
