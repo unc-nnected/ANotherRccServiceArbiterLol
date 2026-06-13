@@ -153,7 +153,7 @@ static class Helpers
         Timeout = Timeout.InfiniteTimeSpan
     };
     private static readonly Dictionary<int, int> usage = new();
-    private const int MaxJobs = 2; // this is needed for avatars so particles dont break in renders (not showing up at all)
+    private const int MaxJobs = 1; // this is needed for avatars so particles dont break in renders (not showing up at all)
     private static readonly HashSet<int> dedicated = new();
     private const int MaxDedicated = 2;
 
