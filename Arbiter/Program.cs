@@ -165,7 +165,7 @@ public class Program
                     return await ExecuteAuthorizedJobAsync<GameserverRequest>(req, "gameserver", body => body.PlaceId > 0, body => {
                             var jobId = Guid.NewGuid().ToString();
 
-                            int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out string? render, body.TeamCreate, out int ignoredPort, out int pid);
+                            int fakeahport = Helpers.StartGameserver(jobId, body.PlaceId, out string? render, body.TeamCreate, out int ignoredPort, out int pid, MaxPlayers: body.MaxPlayers);
 
                             if (fakeahport == 0)
                                 return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
@@ -178,7 +178,7 @@ public class Program
                     return await ExecuteAuthorizedJobAsync<ARenderRequest>(req, "avatar render", body => body.UserId > 0, body => {
                             var jobId = Guid.NewGuid().ToString();
 
-                            if (!Helpers.ARender(jobId, body.UserId, out string? render, body.IsHeadshot, body.IsClothing))
+                            if (!Helpers.ARender(jobId, body.UserId, out string? render, body.IsHeadshot, body.IsClothing, ThreeD: body.ThreeD))
                                 return Task.FromResult<IResult>(Results.Problem("RCCService couldn't Open a Job"));
 
                             if (render is null)

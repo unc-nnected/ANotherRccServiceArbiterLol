@@ -349,10 +349,10 @@ static class Config
 
 // bunch of post data shit!
 public record RenderRequest(long PlaceId);
-public record ARenderRequest(long UserId, bool IsHeadshot, bool IsClothing);
+public record ARenderRequest(long UserId, bool IsHeadshot, bool IsClothing, bool ThreeD);
 public record MRenderRequest(long AssetId);
 public record MMRenderRequest(long MeshId);
-public record GameserverRequest(long PlaceId, bool TeamCreate);
+public record GameserverRequest(long PlaceId, bool TeamCreate, long MaxPlayers); // personally who needs over 200 players?
 public record KillRequest(long pid);
 public record GSMJob
 {

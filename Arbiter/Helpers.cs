@@ -734,7 +734,7 @@ static class Helpers
         return true;
     }
 
-    public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid)
+    public static int StartGameserver(string jobId, long placeId, out string? render, bool teamcreate, out int fakeahport, out int pid, long MaxPlayers)
     {
         render = null;
         int GameServerPort = GetGameServerPort(40000, 59999);
@@ -803,7 +803,7 @@ static class Helpers
 
         pid = proc.Id;
         int fakeahtimeout = Config.legacy ? 604800 : 30;
-        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport: GameServerPort, jobtype: "OpenJobEx"))
+        if (!SOAP(jobId, SOAPPort, placeId, Config.GSScript, fakeahtimeout, 1, out render, teamcreate, fakeahport: GameServerPort, jobtype: "OpenJobEx", MaxPlayers: MaxPlayers))
         {
             lock (PoolLock)
             {
@@ -1134,7 +1134,8 @@ static class Helpers
         return string.Equals(Convert.ToString(actual), expectedRaw, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx")
+    // holy fucking shit we need to refactor this RIGHT NOW
+    private static bool SOAP(string jobId, int port, long placeId, string type, int howlonguntilwedie, int category, out string? render, bool teamcreate = false, int fakeahport = 53640, bool headshot = false, bool isclothing = false, List<LuaValue>? arguments = null, bool enforceSigning = true, string jobtype = "OpenJobEx", long MaxPlayers = 200, bool ThreeD = false)
     {
         render = null;
 
